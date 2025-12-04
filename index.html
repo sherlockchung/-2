@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>日檢單詞混合測驗（20 題）</title>
+    <title>日檢單詞混合測驗</title>
     <style>
+        /* ------------------------------------------- */
+        /* 樣式 (保留原樣式，確保美觀) */
+        /* ------------------------------------------- */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f7f6;
@@ -31,11 +34,8 @@
             font-size: 1.1em;
             font-weight: normal; 
             color: #7f8c8d; 
-            opacity: 0.7; 
+            opacity: 0.8; 
             padding: 0; 
-            background: none; 
-            border: none;
-            box-shadow: none;
         }
 
         h1 {
@@ -56,15 +56,16 @@
             border-radius: 8px;
             margin-bottom: 25px;
             text-align: center;
-            min-height: 100px;
+            min-height: 120px;
         }
         #word-display {
             font-size: 3.0em;
             font-weight: bold;
             color: #e74c3c;
             margin: 0;
+            line-height: 1.2;
         }
-        #question-prompt-text { /* 新增提示文字 */
+        #question-prompt-text { 
             font-size: 1.0em;
             color: #555;
             margin-top: 5px;
@@ -100,10 +101,10 @@
             transform: scale(0.98);
         }
         .correct {
-            background-color: #27ae60 !important;
+            background-color: #27ae60 !important; /* 綠色 */
         }
         .incorrect {
-            background-color: #c0392b !important;
+            background-color: #c0392b !important; /* 紅色 */
         }
         #feedback {
             font-size: 1.3em;
@@ -163,7 +164,7 @@
         <div id="feedback"></div>
 
         <div class="options-grid" id="options-container">
-            </div>
+        </div>
     </div>
 
     <div id="result-screen" style="display: none;">
@@ -176,698 +177,446 @@
 
 <script>
     // ----------------------------------------------------------------------
-    // 1. 單詞庫 (已重新結構化為 Kanji/Reading/Meaning)
+    // 1. 單詞庫 (已優化，直接使用最乾淨的 Kanji, Reading, Chinese 結構)
+    //    * 備註: 複雜的詞彙如 "ないか／げか" 已拆分為獨立項目
     // ----------------------------------------------------------------------
-    const RAW_WORDS = [
-        { japanese: "ひっくりかえす", chinese: "推翻、翻倒、顛倒" },
-        { japanese: "けいと", chinese: "毛線" },
-        { japanese: "あむ", chinese: "編織" },
-        { japanese: "ゴミがちらかる", chinese: "垃圾散亂、雜物散落" },
-        { japanese: "どける", chinese: "挪開、移開" },
-        { japanese: "ほこり", chinese: "灰塵" },
-        { japanese: "ほうき", chinese: "掃帚" },
-        { japanese: "ちりとり", chinese: "畚箕" },
-        { japanese: "ほす", chinese: "曬乾、晾乾" },
-        { japanese: "かわかす", chinese: "弄乾、使乾燥" },
-        { japanese: "しわをのばす", chinese: "燙平皺紋" },
-        { japanese: "つるす", chinese: "懸掛、吊掛" },
-        { japanese: "ゆでる", chinese: "水煮、汆燙" },
-        { japanese: "いる", chinese: "炒（少油）、烘烤" },
-        { japanese: "いためる", chinese: "油炒（多油）、翻炒" },
-        { japanese: "ごはんをたく", chinese: "煮飯、燒飯" },
-        { japanese: "をにる", chinese: "煮（及物）、燉煮" },
-        { japanese: "がにえる", chinese: "煮熟、煮爛（不及物）" },
-        { japanese: "出来上がる 仕上がる", chinese: "完成、做好" },
-        { japanese: "出来たての料理", chinese: "剛做好的料理" },
-        { japanese: "かじる", chinese: "啃、咬" },
-        { japanese: "よいがさめる/を覚ます", chinese: "酒醒" },
-        { japanese: "よっぱらい", chinese: "醉漢、酒鬼" },
-        { japanese: "めまいがする", chinese: "頭暈" },
-        { japanese: "おごる", chinese: "請客" },
-        { japanese: "けいいをもつ/はらう", chinese: "尊敬、表示敬意" },
-        { japanese: "つまむ", chinese: "捏、夾、摘、少量吃" },
-        { japanese: "こしょう", chinese: "胡椒" },
-        { japanese: "す", chinese: "醋" },
-        { japanese: "しおからい", chinese: "鹹的" },
-        { japanese: "すっぱい", chinese: "酸的" },
-        { japanese: "さっぱりした", chinese: "清爽的、乾脆的" },
-        { japanese: "しつこい/くどい", chinese: "油膩的、囉嗦的" },
-        { japanese: "すきずき", chinese: "各有所好、品味不同" },
-        { japanese: "すききらい", chinese: "挑食、好惡" },
-        { japanese: "まずい", chinese: "難吃的、不高明的" },
-        { japanese: "余程（よほど）", chinese: "很、相當、差點" },
-        { japanese: "しきりに", "chinese": "不斷地、屢次" },
-        { japanese: "むしろ", chinese: "反而、寧可" },
-        { japanese: "どなる", chinese: "怒吼、大聲責罵" },
-        { japanese: "うわさをひろめる", chinese: "散播謠言" },
-        { japanese: "にらむ", chinese: "瞪視" },
-        { japanese: "ぶつぶつ/ふへいを言う", chinese: "嘀咕、發牢騷" },
-        { japanese: "にくらしい", chinese: "可恨的、討厭的" },
-        { japanese: "にくむ/うらむ", chinese: "憎恨/怨恨" },
-        { japanese: "あこがれる", chinese: "憧憬、嚮往" },
-        { japanese: "さまたげる（妨げる）", chinese: "妨礙、阻礙" },
-        { japanese: "ふせぐ（防ぐ）", chinese: "防禦、防止" },
-        { japanese: "あわれ", chinese: "可憐、悲哀" },
-        { japanese: "あいにく", chinese: "不巧、偏偏、可惜" },
-        { japanese: "あいぼう", chinese: "搭檔、夥伴" },
-        { japanese: "はでな", chinese: "華麗的、花俏的" },
-        { japanese: "ひきょうな", chinese: "卑鄙的、懦弱的" },
-        { japanese: "いばる/いばってる", chinese: "傲慢、炫耀" },
-        { japanese: "たもつ", chinese: "保持、維持" },
-        { japanese: "いさましい", chinese: "勇敢的、雄壯的" },
-        { japanese: "足首をねじる/ひねる", chinese: "扭傷腳踝" },
-        { japanese: "けつえき", chinese: "血液" },
-        { japanese: "おせん", chinese: "污染" },
-        { japanese: "ないか／げか", chinese: "內科／外科" },
-        { japanese: "ゆかにしゃがむ", chinese: "蹲在地板上" },
-        { japanese: "しょうどくする", chinese: "消毒" },
-        { japanese: "あおじろい", chinese: "臉色蒼白" },
-        { japanese: "いすにこしかける", chinese: "坐下、入座" },
-        { japanese: "あしのあと", chinese: "腳印、足跡" },
-        { japanese: "みずうみ", chinese: "湖泊" },
-        { japanese: "すな / どろ", chinese: "沙子 / 泥巴" },
-        { japanese: "なだらかな / けわしい", chinese: "平緩的 / 陡峭的" },
-        { japanese: "ゆうひがしずむ", chinese: "夕陽西下" },
-        { japanese: "せきせつ", chinese: "積雪" },
-        { japanese: "しわす", chinese: "臘月、十二月" },
-        { japanese: "たき", chinese: "瀑布" },
-        { japanese: "だらしない", chinese: "散漫的、邋遢的" },
-        { japanese: "ダラダラ", chinese: "拖拖拉拉、滴滴答答" },
-        { japanese: "つよきな / よわきな", chinese: "強硬的 / 軟弱的" },
-        { japanese: "ごういんな", chinese: "強硬的、粗暴的" },
-        { japanese: "わがまま", chinese: "任性、自我中心" },
-        { japanese: "たよりなる", chinese: "可靠的、值得依賴的" },
-        { japanese: "きがあらい", chinese: "性情粗暴、脾氣大" },
-        { japanese: "しゃれを言う", chinese: "說笑話、開玩笑" },
-        { japanese: "ひきうける", chinese: "承擔、接受" },
-        { japanese: "やとう/やとわれる", chinese: "雇用/被雇用" },
-        { japanese: "をもうける/がもうかる", chinese: "賺（錢）/賺錢（不及物）" },
-        { japanese: "あてはまる", chinese: "適用、符合" },
-        { japanese: "はりきって", chinese: "幹勁十足地" },
-        { japanese: "おいかける", chinese: "追趕" },
-        { japanese: "仕事をしじする", chinese: "指示工作" },
-        { japanese: "しゅうにんする/職位につく", chinese: "就任/就職" },
-        { japanese: "つとめる", chinese: "工作、任職" },
-        { japanese: "そんがいをだす", chinese: "造成損害" },
-        { japanese: "そしきする", chinese: "組織" },
-        { japanese: "ひょっとして/もしも/まんがいち", chinese: "萬一、或許、假使" },
-        { japanese: "きょうぎ", chinese: "競技、競賽" },
-        { japanese: "試合にしゅつじょうする", chinese: "參加比賽" },
-        { japanese: "当分（とうぶん）", chinese: "目前、暫時" },
-        { japanese: "かじつ", chinese: "果實" },
-        { japanese: "みのる", chinese: "結果實、成熟" },
-        { japanese: "めんどう", chinese: "麻煩、費事" },
-        { japanese: "うっかり", chinese: "不小心、不注意" },
-        { japanese: "かなり けっこう だいぶ そうとう", chinese: "相當、很、頗" },
-        { japanese: "できがせめる", chinese: "天快亮了" },
-        { japanese: "よあけ", chinese: "黎明、破曉" },
-        { japanese: "ひざしがまぶしい", chinese: "陽光刺眼" },
-        { japanese: "ようちえん", chinese: "幼稚園" },
-        { japanese: "ようじ", chinese: "幼兒、兒童" },
-        { japanese: "といにこたえる", chinese: "回答問題" },
-        { japanese: "ひっきしけんのとうあんをだす", chinese: "提交筆試考卷" },
-        { japanese: "てつがく", chinese: "哲學" },
-        { japanese: "ゼミ えんしゅう", chinese: "專題討論課" },
-        { japanese: "きょうじゅ", chinese: "教授" },
-        { japanese: "うけもつ たんとうする", chinese: "負責、擔任" },
-        { japanese: "こくりつ しりつ", chinese: "國立 私立" },
-        { japanese: "せんこうする", chinese: "專攻、主修" },
-        { japanese: "さんこうぶんけん", chinese: "參考文獻" },
-        { japanese: "いまいち", chinese: "差一點、總覺得不夠好" },
-        { japanese: "せっかく", chinese: "好不容易、特意" },
-        { japanese: "せめて", chinese: "至少、起碼" },
-        { japanese: "あるいは", chinese: "或許、或者" },
-        { japanese: "ばらばら", chinese: "分散、零散" },
-        { japanese: "そもそも", chinese: "原本、起初" },
-        { japanese: "チラシ", chinese: "傳單" },
-        { japanese: "くばる", chinese: "分發、派發" },
-        { japanese: "あまる", chinese: "剩下、多餘" },
-        { japanese: "にじ", chinese: "彩虹" },
-        { japanese: "さかんに", chinese: "盛行、興盛地" },
-        { japanese: "スラスラ", chinese: "流暢地、順利地" },
-        { japanese: "決まってて", chinese: "一定、毫無疑問" },
-        { japanese: "おうぼ", chinese: "應徵、報名" },
-        { japanese: "さわやか", chinese: "爽快、清爽" },
-        { japanese: "みこみ", chinese: "希望、可能性" },
-        { japanese: "あれたてんき", chinese: "惡劣的天氣" },
-        { japanese: "さくや", chinese: "昨夜、昨晚" },
-        { japanese: "こげる", chinese: "燒焦" },
-        { japanese: "やけどをおう", chinese: "燙傷、燒傷" },
-        { japanese: "てあて", chinese: "治療、津貼" },
-        { japanese: "いま", chinese: "現在" },
-        { japanese: "ふれる", chinese: "接觸、觸及" },
-        { japanese: "そせん", chinese: "祖先" },
-        { japanese: "しそん", chinese: "子孫" },
-        { japanese: "まご", chinese: "孫子" },
-        { japanese: "せだい", chinese: "世代" },
-        { japanese: "いっか", chinese: "一家、一戶" },
-        { japanese: "おやこうこう", chinese: "孝順" },
-        { japanese: "なつかしい", chinese: "懷念的、令人想念的" },
-        { japanese: "しまい", chinese: "姐妹" },
-        { japanese: "すえっこ", chinese: "老么、最小的孩子" },
-        { japanese: "ひとりっこ", chinese: "獨生子" },
-        { japanese: "ふたご", chinese: "雙胞胎" },
-        { japanese: "なかよし", chinese: "好朋友、感情好" },
-        { japanese: "おじょうちゃん", chinese: "小女兒、小姐" },
-        { japanese: "おぼうちゃん", chinese: "小兒子、少爺" },
-        { japanese: "ふさい", chinese: "夫妻" },
-        { japanese: "しょくば", chinese: "職場" },
-        { japanese: "おないとし", chinese: "同年齡" },
-        { japanese: "きつかい", chinese: "掛慮、操心" },
-        { japanese: "あくしゅ", chinese: "握手" },
-        { japanese: "おじぎをする", chinese: "鞠躬" },
-        { japanese: "ながねん", chinese: "長年" },
-        { japanese: "ちっとも", chinese: "一點也不" },
-        { japanese: "まるで", chinese: "簡直、好像" },
-        { japanese: "とくちょう", chinese: "特徵" },
-        { japanese: "対になる", chinese: "成為一對" },
-        { japanese: "せっきょくてき", chinese: "積極的" },
-        { japanese: "しょうきょくてき", chinese: "消極的" },
-        { japanese: "おとなしい", chinese: "溫順的、安靜的" },
-        { japanese: "やかましい", chinese: "吵鬧的、囉嗦的" },
-        { japanese: "しんちょうな", chinese: "慎重的、小心的" },
-        { japanese: "そそっかしい", chinese: "冒失的、魯莽的" },
-        { japanese: "ぶきような", chinese: "笨拙的" },
-        { japanese: "ようりょうがいい", chinese: "精明的、會辦事的" },
-        { japanese: "けんきょな", chinese: "謙虛的" },
-        { japanese: "なまいきな", chinese: "傲慢的、自大的" },
-        { japanese: "するどい", chinese: "鋒利的、敏銳的" },
-        { japanese: "にぶい", chinese: "遲鈍的、不靈敏的" },
-        { japanese: "はきはきした", chinese: "乾脆俐落的、爽快的" },
-        { japanese: "じゅんすいな", chinese: "純粹的、單純的" },
-        { japanese: "おだやかな", chinese: "穩定的、溫和的" },
-        { japanese: "ちょうしょ", chinese: "長處、優點" },
-        { japanese: "たんしょ", chinese: "短處、缺點" },
-        { japanese: "わがままな", chinese: "任性的" },
-        { japanese: "あつかましち", chinese: "厚臉皮的、無恥的" },
-        { japanese: "ずうずうしい", chinese: "厚顏無恥的" },
-        { japanese: "けちな", chinese: "吝嗇的" },
-        { japanese: "へいき", chinese: "若無其事、不介意" },
-        { japanese: "うらぎる", chinese: "背叛" },
-        { japanese: "ふざけてる", chinese: "開玩笑、鬧著玩" },
-        { japanese: "あきる", chinese: "厭倦、膩煩" },
-        { japanese: "あきっぼい", chinese: "易厭倦的、沒長性的" },
-        { japanese: "あわてる", chinese: "慌張、急忙" },
-        { japanese: "のんきな", chinese: "悠閒的、無憂無慮的" },
-        { japanese: "のんびりした", chinese: "悠閒的、輕鬆的" },
-        { japanese: "そっちょく", chinese: "坦率、直率" },
-        { japanese: "どきどきする", chinese: "忐忑不安、緊張" },
-        { japanese: "イライラする", chinese: "焦躁、煩躁" },
-        { japanese: "きらくに", chinese: "輕鬆地、無拘無束地" },
-        { japanese: "あせる", chinese: "著急、焦慮" },
-        { japanese: "きげん", chinese: "期限、心情" },
-        { japanese: "せいけつな", chinese: "清潔的" },
-        { japanese: "ふけつな", chinese: "不潔的、骯髒的" },
-        { japanese: "みかけ", chinese: "外表、外觀" },
-        { japanese: "はでな", chinese: "華麗的" },
-        { japanese: "じみな", chinese: "樸素的、不起眼的" },
-        { japanese: "わざと", chinese: "故意地" },
-        { japanese: "いっさい", chinese: "一切、全部" },
-        { japanese: "めっきり", chinese: "顯著地、非常" },
-        { japanese: "あいかわらず", chinese: "一如既往、仍然" },
-        { japanese: "ずるい", chinese: "狡猾的、奸詐的" },
-        { japanese: "みかた", chinese: "看法、同伴" },
-        { japanese: "こっそり", chinese: "偷偷地、悄悄地" },
-        { japanese: "うたがう", chinese: "懷疑" },
-        { japanese: "うやまう", chinese: "尊敬、敬重" },
-        { japanese: "うらやむ", chinese: "羨慕" },
-        { japanese: "なやむ", chinese: "煩惱、苦惱" },
-        { japanese: "しつぼうする", chinese: "失望" },
-        { japanese: "ガッカリする", chinese: "失望、洩氣" },
-        { japanese: "うらやましい", chinese: "令人羨慕的" },
-        { japanese: "きのどくた", chinese: "可憐、不幸" },
-        { japanese: "あやまる", chinese: "道歉" },
-        { japanese: "なぐさめる", chinese: "安慰" },
-        { japanese: "ののしる", chinese: "謾罵、辱罵" },
-        { japanese: "けなす", chinese: "貶低、誹謗" },
-        { japanese: "さける", chinese: "避開、躲開" },
-        { japanese: "にげる", chinese: "逃跑" },
-        { japanese: "ちょうこくする", chinese: "彫刻、雕刻" },
-        { japanese: "じょげんする", chinese: "勸告、建議" },
-        { japanese: "いいつける", chinese: "吩咐、告狀" },
-        { japanese: "むすびつける", chinese: "聯繫、結合" },
-        { japanese: "じまんする", chinese: "自誇、驕傲" },
-        { japanese: "かくす", chinese: "隱藏" },
-        { japanese: "ひみつ", chinese: "秘密" },
-        { japanese: "ごかいをとく / がとける", chinese: "消除誤會" },
-        { japanese: "なかなおりする", chinese: "和好、言歸於好" },
-        { japanese: "エチケット", chinese: "禮儀、規矩" },
-        { japanese: "さほう", chinese: "禮節、規矩" },
-        { japanese: "じょうしき", chinese: "常識" },
-        { japanese: "ふくそう", chinese: "服裝" },
-        { japanese: "みっともない", chinese: "難看的、不體面的" },
-        { japanese: "みかける", chinese: "看到、偶然遇見" },
-        { japanese: "さめる", chinese: "冷卻、覺醒" },
-        { japanese: "しつれんする", chinese: "失戀" },
-        { japanese: "こいする", chinese: "戀愛" },
-        { japanese: "どうとく", chinese: "道德" },
-        { japanese: "まさに", chinese: "正是、簡直" },
-        { japanese: "おもいきって", chinese: "毅然地、下定決心地" },
-        { japanese: "ようやく", chinese: "終於、好不容易" },
-        { japanese: "いつのまにか", chinese: "不知不覺中" },
-        { japanese: "くう", chinese: "吃（較粗俗）" },
-        { japanese: "しゃぶる", chinese: "吮吸、舔" },
-        { japanese: "あじわう", chinese: "品嚐、體會" },
-        { japanese: "かぐ", chinese: "聞（氣味）" },
-        { japanese: "しょくよく", chinese: "食慾" },
-        { japanese: "ゆのみ", chinese: "茶杯" },
-        { japanese: "おぼん", chinese: "托盤" },
-        { japanese: "えいよう", chinese: "營養" },
-        { japanese: "しょうか", chinese: "消化" },
-        { japanese: "いにもたれる", chinese: "胃脹、胃不舒服" },
-        { japanese: "かんげいかい", chinese: "歡迎會" },
-        { japanese: "つぎあう", chinese: "互請、互相請客" },
-        { japanese: "よう（酔）", chinese: "醉" },
-        { japanese: "ふつかよい", chinese: "宿醉" },
-        { japanese: "ずつう", chinese: "頭痛" },
-        { japanese: "はきけ", chinese: "噁心、想吐" },
-        { japanese: "はく", chinese: "吐（及物）、穿（鞋襪）" },
-        { japanese: "うしなう", chinese: "失去、遺失" },
-        { japanese: "にぎる", chinese: "握、捏" },
-        { japanese: "ぜいたく", chinese: "奢侈" },
-        { japanese: "そまつな", chinese: "粗糙的、簡陋的" },
-        { japanese: "てんれんの", chinese: "天然的、天生的" },
-        { japanese: "きちょうな", chinese: "貴重的、寶貴的" },
-        { japanese: "げんさん", chinese: "原產地" },
-        { japanese: "このみのあじ", chinese: "喜歡的口味" },
-        { japanese: "ぬう", chinese: "縫紉" },
-        { japanese: "がら", chinese: "花樣、圖案" },
-        { japanese: "もよう", chinese: "花紋、圖案" },
-        { japanese: "しまもよう", chinese: "條紋圖案" },
-        { japanese: "ぞうきん", chinese: "抹布" },
-        { japanese: "はく", chinese: "掃（地）" },
-        { japanese: "ピカピカ", chinese: "閃閃發光、光亮" },
-        { japanese: "うらがえす", chinese: "翻面、裡外翻轉" },
-        { japanese: "たたむ", chinese: "摺疊" },
-        { japanese: "すいじ", chinese: "家務、炊事" },
-        { japanese: "こんだて", chinese: "菜單、伙食" },
-        { japanese: "フライパン", chinese: "平底鍋" },
-        { japanese: "ねっする", chinese: "加熱" },
-        { japanese: "かねつする", chinese: "加熱" },
-        { japanese: "たく（炊）", chinese: "煮飯" },
-        { japanese: "とく とかす とける", chinese: "溶解（及物/不及物）" },
-        { japanese: "そうこ", chinese: "倉庫" },
-        { japanese: "しまう", chinese: "收進、收拾" },
-        { japanese: "せんをする", chinese: "蓋上蓋子" },
-        { japanese: "かび（黴び）", chinese: "黴菌、發霉" },
-        { japanese: "はえる", chinese: "生長、發霉" },
-        { japanese: "くさる", chinese: "腐爛、變質" },
-        { japanese: "あかんぼう", chinese: "嬰兒" },
-        { japanese: "きせる", chinese: "給穿衣服" },
-        { japanese: "なでる", chinese: "撫摸" },
-        { japanese: "だく だっこする", chinese: "抱、抱著（人或寵物）" },
-        { japanese: "いだく かかえる", chinese: "懷抱、抱著（抽象或物體）" },
-        { japanese: "せおう", chinese: "背負" },
-        { japanese: "おんぶする", chinese: "背（人）" },
-        { japanese: "かまう", chinese: "管、介意" },
-        { japanese: "あばれる", chinese: "亂鬧、發脾氣" },
-        { japanese: "こぼす こぼれる", chinese: "弄灑/灑出來" },
-        { japanese: "よごす よごれる", chinese: "弄髒/變髒" },
-        { japanese: "みずたまもよう", chinese: "水玉花紋、圓點花紋" },
-        { japanese: "かえって", chinese: "反而、反倒" },
-        { japanese: "あらかじめ", chinese: "事先、預先" },
-        { japanese: "ぐっと", chinese: "一口氣、更加、一下子" },
-        { japanese: "しょうじょう", chinese: "症狀" },
-        { japanese: "くずす", chinese: "弄垮、破壞" },
-        { japanese: "かかる", chinese: "罹患（疾病）" },
-        { japanese: "でんせん（伝染）", chinese: "傳染" },
-        { japanese: "そめる", chinese: "染色" },
-        { japanese: "こっせつ", chinese: "骨折" },
-        { japanese: "つかれがたまる", chinese: "積累疲勞" },
-        { japanese: "もむ", chinese: "按摩、揉" },
-        { japanese: "しらが", chinese: "白頭髮" },
-        { japanese: "ぬける", chinese: "脫落、掉落" },
-        { japanese: "ひねる", chinese: "扭轉、擰" },
-        { japanese: "ねじる", chinese: "扭、擰" },
-        { japanese: "ほうたい", chinese: "繃帶" },
-        { japanese: "きく（効く）", chinese: "有效、奏效" },
-        { japanese: "ふるえる", chinese: "顫抖" },
-        { japanese: "くつう", chinese: "苦痛、疼痛" },
-        { japanese: "やっきょく", chinese: "藥局、藥店" },
-        { japanese: "かんじゃ", chinese: "病患、病人" },
-        { japanese: "みる（診る）", chinese: "診斷" },
-        { japanese: "しんさつ", chinese: "診察" },
-        { japanese: "しんたん", chinese: "診斷、檢查" },
-        { japanese: "ないか", chinese: "內科" },
-        { japanese: "げか", chinese: "外科" },
-        { japanese: "はう", chinese: "爬" },
-        { japanese: "もたれる", chinese: "倚靠、胃脹" },
-        { japanese: "よぶんな", chinese: "多餘的" },
-        { japanese: "よぼう（予防）", chinese: "預防" },
-        { japanese: "てきど", chinese: "適度" },
-        { japanese: "てつや", chinese: "熬夜" },
-        { japanese: "ふそく", chinese: "不足" },
-        { japanese: "すいみんぶそく", chinese: "睡眠不足" },
-        { japanese: "くしゃみ しゃっくり あくび", chinese: "噴嚏 打嗝 呵欠" },
-        { japanese: "じゅみょう", chinese: "壽命" },
-        { japanese: "ながいき", chinese: "長壽" },
-        { japanese: "はだ", chinese: "皮膚" },
-        { japanese: "あれる", chinese: "粗糙、荒蕪" },
-        { japanese: "カミソリ", chinese: "刮鬍刀" },
-        { japanese: "ひげ", chinese: "鬍子" },
-        { japanese: "そる", chinese: "刮、剃" },
-        { japanese: "くし（櫛）", chinese: "梳子" },
-        { japanese: "とく とかす", chinese: "梳（頭髮）" },
-        { japanese: "立ち上がる", chinese: "站起來、起身" },
-        { japanese: "とび上がる", chinese: "跳起來" },
-        { japanese: "いちおう", chinese: "暫且、姑且" },
-        { japanese: "とうぶん", chinese: "暫時、目前" },
-        { japanese: "たちまち", chinese: "立刻、轉眼間" },
-        { japanese: "いまに", chinese: "不久、遲早" },
-        { japanese: "きょうぎ", chinese: "競技、競賽" },
-        { japanese: "しゅつじょうする", chinese: "出場、參賽" },
-        { japanese: "かつやくする", chinese: "活躍、大顯身手" },
-        { japanese: "したがう", chinese: "遵從、跟隨" },
-        { japanese: "ベテラン", chinese: "老手、經驗豐富的人" },
-        { japanese: "せんしゅ", chinese: "選手" },
-        { japanese: "せめる", chinese: "責備、進攻" },
-        { japanese: "しょうぶ", chinese: "勝負、比賽" },
-        { japanese: "しょうはい", chinese: "勝敗" },
-        { japanese: "をやぶる がやぶれる", chinese: "打破、輸/被打破、輸" },
-        { japanese: "ひきわけ", chinese: "平局、平手" },
-        { japanese: "どくしょ", chinese: "讀書" },
-        { japanese: "ちょしゃ", chinese: "著者、作者" },
-        { japanese: "しょせき", chinese: "書籍" },
-        { japanese: "もくじ", chinese: "目錄" },
-        { japanese: "さくいん", chinese: "索引" },
-        { japanese: "ひょうろん", chinese: "評論" },
-        { japanese: "しっぴつ", chinese: "寫作、執筆" },
-        { japanese: "こてん", chinese: "古典" },
-        { japanese: "やくす", chinese: "翻譯" },
-        { japanese: "しょうせつ", chinese: "小説" },
-        { japanese: "けっさく", chinese: "傑作" },
-        { japanese: "めいばめん", chinese: "名場面" },
-        { japanese: "ずいひつ", chinese: "随筆、散文" },
-        { japanese: "みつかる", chinese: "被找到、發現" },
-        { japanese: "あらすじ", chinese: "概要、大綱" },
-        { japanese: "えんげき", chinese: "戲劇" },
-        { japanese: "げきじょう", chinese: "劇場" },
-        { japanese: "しばい", chinese: "戲劇、表演" },
-        { japanese: "えんぎ", chinese: "演技" },
-        { japanese: "しゅやく", chinese: "主角" },
-        { japanese: "わきやく", chinese: "配角" },
-        { japanese: "ぶたい", chinese: "舞台" },
-        { japanese: "まく", chinese: "幕" },
-        { japanese: "セリフ", chinese: "台詞" },
-        { japanese: "えんそう", chinese: "演奏" },
-        { japanese: "さいほう", chinese: "裁縫" },
-        { japanese: "こうげい", chinese: "工藝" },
-        { japanese: "わた（綿）", chinese: "棉花" },
-        { japanese: "つめふ（詰める）", chinese: "塞滿、裝入" },
-        { japanese: "けずる ほる", chinese: "削、刻" },
-        { japanese: "ひょっとすると", chinese: "或許、說不定" },
-        { japanese: "もしかして", chinese: "難道、莫非" },
-        { japanese: "まんがいち", chinese: "萬一、一旦" },
-        { japanese: "わずか", chinese: "少量、一點點" },
-        { japanese: "じつに", chinese: "的確、實在是" },
-        { japanese: "じつは", chinese: "其實、老實說" },
-        { japanese: "まさに", chinese: "正是、即將" }
+    const RAW_WORDS_CLEANED = [
+        // 清理並簡化原詞庫中複雜的詞條，直接提供 Kanji, Reading, Chinese 的對應
+        // Type 1 (假名選意思) 或 Type 2 (漢字選假名) 都從這裡生成
+        { kanji: "ひっくりかえす", reading: "ひっくりかえす", chinese: "推翻、翻倒、顛倒" },
+        { kanji: "毛糸", reading: "けいと", chinese: "毛線" },
+        { kanji: "編む", reading: "あむ", chinese: "編織" },
+        { kanji: "ゴミが散らかる", reading: "ゴミがちらかる", chinese: "垃圾散亂、雜物散落" },
+        { kanji: "退ける", reading: "どける", chinese: "挪開、移開" },
+        { kanji: "埃", reading: "ほこり", chinese: "灰塵" },
+        { kanji: "箒", reading: "ほうき", chinese: "掃帚" },
+        { kanji: "ちりとり", reading: "ちりとり", chinese: "畚箕" },
+        { kanji: "干す", reading: "ほす", chinese: "曬乾、晾乾" },
+        { kanji: "乾かす", reading: "かわかす", chinese: "弄乾、使乾燥" },
+        { kanji: "しわをのばす", reading: "しわをのばす", chinese: "燙平皺紋" },
+        { kanji: "吊るす", reading: "つるす", chinese: "懸掛、吊掛" },
+        { kanji: "茹でる", reading: "ゆでる", chinese: "水煮、汆燙" },
+        { kanji: "炒る", reading: "いる", chinese: "炒（少油）、烘烤" },
+        { kanji: "炒める", reading: "いためる", chinese: "油炒（多油）、翻炒" },
+        { kanji: "ご飯を炊く", reading: "ごはんをたく", chinese: "煮飯、燒飯" },
+        { kanji: "煮る", reading: "にる", chinese: "煮（及物）、燉煮" },
+        { kanji: "煮える", reading: "にえる", chinese: "煮熟、煮爛（不及物）" },
+        { kanji: "出来上がる", reading: "できあがる", chinese: "完成、做好" },
+        { kanji: "出来たての料理", reading: "できたてのりょうり", chinese: "剛做好的料理" },
+        { kanji: "齧る", reading: "かじる", chinese: "啃、咬" },
+        { kanji: "酔いが覚める", reading: "よいがさめる", chinese: "酒醒" },
+        { kanji: "酔っぱらい", reading: "よっぱらい", chinese: "醉漢、酒鬼" },
+        { kanji: "めまいがする", reading: "めまいがする", chinese: "頭暈" },
+        { kanji: "奢る", reading: "おごる", chinese: "請客" },
+        { kanji: "敬意を払う", reading: "けいいをはらう", chinese: "尊敬、表示敬意" },
+        { kanji: "摘む", reading: "つまむ", chinese: "捏、夾、摘、少量吃" },
+        { kanji: "胡椒", reading: "こしょう", chinese: "胡椒" },
+        { kanji: "酢", reading: "す", chinese: "醋" },
+        { kanji: "塩辛い", reading: "しおからい", chinese: "鹹的" },
+        { kanji: "酸っぱい", reading: "すっぱい", chinese: "酸的" },
+        { kanji: "さっぱりした", reading: "さっぱりした", chinese: "清爽的、乾脆的" },
+        { kanji: "しつこい", reading: "しつこい", chinese: "油膩的、囉嗦的" },
+        { kanji: "好き好き", reading: "すきずき", chinese: "各有所好、品味不同" },
+        { kanji: "好き嫌い", reading: "すききらい", chinese: "挑食、好惡" },
+        { kanji: "不味い", reading: "まずい", chinese: "難吃的、不高明的" },
+        { kanji: "余程", reading: "よほど", chinese: "很、相當、差點" },
+        { kanji: "しきりに", reading: "しきりに", chinese: "不斷地、屢次" },
+        { kanji: "むしろ", reading: "むしろ", chinese: "反而、寧可" },
+        { kanji: "怒鳴る", reading: "どなる", chinese: "怒吼、大聲責罵" },
+        { kanji: "うわさを広める", reading: "うわさをひろめる", chinese: "散播謠言" },
+        { kanji: "睨む", reading: "にらむ", chinese: "瞪視" },
+        { kanji: "不平を言う", reading: "ふへいをいう", chinese: "嘀咕、發牢騷" },
+        { kanji: "憎らしい", reading: "にくらしい", chinese: "可恨的、討厭的" },
+        { kanji: "憎む", reading: "にくむ", chinese: "憎恨" },
+        { kanji: "憧れる", reading: "あこがれる", chinese: "憧憬、嚮往" },
+        { kanji: "妨げる", reading: "さまたげる", chinese: "妨礙、阻礙" },
+        { kanji: "防ぐ", reading: "ふせぐ", chinese: "防禦、防止" },
+        { kanji: "哀れ", reading: "あわれ", chinese: "可憐、悲哀" },
+        { kanji: "あいにく", reading: "あいにく", chinese: "不巧、偏偏、可惜" },
+        { kanji: "相棒", reading: "あいぼう", chinese: "搭檔、夥伴" },
+        { kanji: "派手な", reading: "はでな", chinese: "華麗的、花俏的" },
+        { kanji: "卑怯な", reading: "ひきょうな", chinese: "卑鄙的、懦弱的" },
+        { kanji: "威張る", reading: "いばる", chinese: "傲慢、炫耀" },
+        { kanji: "保つ", reading: "たもつ", chinese: "保持、維持" },
+        { kanji: "勇ましい", reading: "いさましい", chinese: "勇敢的、雄壯的" },
+        { kanji: "足首をひねる", reading: "あしくびをひねる", chinese: "扭傷腳踝" },
+        { kanji: "血液", reading: "けつえき", chinese: "血液" },
+        { kanji: "汚染", reading: "おせん", chinese: "污染" },
+        { kanji: "内科", reading: "ないか", chinese: "內科" },
+        { kanji: "外科", reading: "げか", chinese: "外科" },
+        { kanji: "床にしゃがむ", reading: "ゆかにしゃがむ", chinese: "蹲在地板上" },
+        { kanji: "消毒する", reading: "しょうどくする", chinese: "消毒" },
+        { kanji: "青白い", reading: "あおじろい", chinese: "臉色蒼白" },
+        { kanji: "椅子に腰掛ける", reading: "いすにこしかける", chinese: "坐下、入座" },
+        { kanji: "足の跡", reading: "あしのあと", chinese: "腳印、足跡" },
+        { kanji: "湖", reading: "みずうみ", chinese: "湖泊" },
+        { kanji: "砂", reading: "すな", chinese: "沙子" },
+        { kanji: "泥", reading: "どろ", chinese: "泥巴" },
+        { kanji: "なだらかな", reading: "なだらかな", chinese: "平緩的" },
+        { kanji: "険しい", reading: "けわしい", chinese: "陡峭的" },
+        { kanji: "夕日が沈む", reading: "ゆうひがしずむ", chinese: "夕陽西下" },
+        { kanji: "積雪", reading: "せきせつ", chinese: "積雪" },
+        { kanji: "師走", reading: "しわす", chinese: "臘月、十二月" },
+        { kanji: "滝", reading: "たき", chinese: "瀑布" },
+        { kanji: "だらしない", reading: "だらしない", chinese: "散漫的、邋遢的" },
+        { kanji: "ダラダラ", reading: "ダラダラ", chinese: "拖拖拉拉、滴滴答答" },
+        { kanji: "強気な", reading: "つよきな", chinese: "強硬的" },
+        { kanji: "弱気な", reading: "よわきな", chinese: "軟弱的" },
+        { kanji: "強引な", reading: "ごういんな", chinese: "強硬的、粗暴的" },
+        { kanji: "わがまま", reading: "わがまま", chinese: "任性、自我中心" },
+        { kanji: "頼りになる", reading: "たよりになる", chinese: "可靠的、值得依賴的" },
+        { kanji: "気が荒い", reading: "きがあらい", chinese: "性情粗暴、脾氣大" },
+        { kanji: "しゃれを言う", reading: "しゃれをいう", chinese: "說笑話、開玩笑" },
+        { kanji: "引き受ける", reading: "ひきうける", chinese: "承擔、接受" },
+        { kanji: "雇う", reading: "やとう", chinese: "雇用" },
+        { kanji: "儲ける", reading: "もうける", chinese: "賺（錢）" },
+        { kanji: "当てはまる", reading: "あてはまる", chinese: "適用、符合" },
+        { kanji: "張り切って", reading: "はりきって", chinese: "幹勁十足地" },
+        { kanji: "追いかける", reading: "おいかける", chinese: "追趕" },
+        { kanji: "仕事を指示する", reading: "しごとをしじする", chinese: "指示工作" },
+        { kanji: "就任する", reading: "しゅうにんする", chinese: "就任" },
+        { kanji: "勤める", reading: "つとめる", chinese: "工作、任職" },
+        { kanji: "損害を出す", reading: "そんがいをだす", chinese: "造成損害" },
+        { kanji: "組織する", reading: "そしきする", chinese: "組織" },
+        { kanji: "万が一", reading: "まんがいち", chinese: "萬一、或許、假使" },
+        { kanji: "競技", reading: "きょうぎ", chinese: "競技、競賽" },
+        { kanji: "出場する", reading: "しゅつじょうする", chinese: "參加比賽" },
+        { kanji: "当分", reading: "とうぶん", chinese: "目前、暫時" },
+        { kanji: "果実", reading: "かじつ", chinese: "果實" },
+        { kanji: "実る", reading: "みのる", chinese: "結果實、成熟" },
+        { kanji: "面倒", reading: "めんどう", chinese: "麻煩、費事" },
+        { kanji: "うっかり", reading: "うっかり", chinese: "不小心、不注意" },
+        { kanji: "かなり", reading: "かなり", chinese: "相當、很、頗" },
+        { kanji: "夜が明ける", reading: "よがあける", chinese: "天快亮了" },
+        { kanji: "夜明け", reading: "よあけ", chinese: "黎明、破曉" },
+        { kanji: "日差しが眩しい", reading: "ひざしがまぶしい", chinese: "陽光刺眼" },
+        { kanji: "幼稚園", reading: "ようちえん", chinese: "幼稚園" },
+        { kanji: "幼児", reading: "ようじ", chinese: "幼兒、兒童" },
+        { kanji: "問いに答える", reading: "といにこたえる", chinese: "回答問題" },
+        { kanji: "答案を出す", reading: "とうあんをだす", chinese: "提交筆試考卷" },
+        { kanji: "哲学", reading: "てつがく", chinese: "哲學" },
+        { kanji: "ゼミ", reading: "ゼミ", chinese: "專題討論課" },
+        { kanji: "教授", reading: "きょうじゅ", chinese: "教授" },
+        { kanji: "受け持つ", reading: "うけもつ", chinese: "負責、擔任" },
+        { kanji: "国立", reading: "こくりつ", chinese: "國立" },
+        { kanji: "私立", reading: "しりつ", chinese: "私立" },
+        { kanji: "専攻する", reading: "せんこうする", chinese: "專攻、主修" },
+        { kanji: "参考文献", reading: "さんこうぶんけん", chinese: "參考文獻" },
+        { kanji: "いまいち", reading: "いまいち", chinese: "差一點、總覺得不夠好" },
+        { kanji: "せっかく", reading: "せっかく", chinese: "好不容易、特意" },
+        { kanji: "せめて", reading: "せめて", chinese: "至少、起碼" },
+        { kanji: "あるいは", reading: "あるいは", chinese: "或許、或者" },
+        { kanji: "ばらばら", reading: "ばらばら", chinese: "分散、零散" },
+        { kanji: "そもそも", reading: "そもそも", chinese: "原本、起初" },
+        { kanji: "チラシ", reading: "チラシ", chinese: "傳單" },
+        { kanji: "配る", reading: "くばる", chinese: "分發、派發" },
+        { kanji: "余る", reading: "あまる", chinese: "剩下、多餘" },
+        { kanji: "虹", reading: "にじ", chinese: "彩虹" },
+        { kanji: "盛んに", reading: "さかんに", chinese: "盛行、興盛地" },
+        { kanji: "スラスラ", reading: "スラスラ", chinese: "流暢地、順利地" },
+        { kanji: "決まってて", reading: "きまってて", chinese: "一定、毫無疑問" },
+        { kanji: "応募", reading: "おうぼ", chinese: "應徵、報名" },
+        { kanji: "爽やか", reading: "さわやか", chinese: "爽快、清爽" },
+        { kanji: "見込み", reading: "みこみ", chinese: "希望、可能性" },
+        { kanji: "荒れた天気", reading: "あれたてんき", chinese: "惡劣的天氣" },
+        { kanji: "昨夜", reading: "さくや", chinese: "昨夜、昨晚" },
+        { kanji: "焦げる", reading: "こげる", chinese: "燒焦" },
+        { kanji: "火傷を負う", reading: "やけどをおう", chinese: "燙傷、燒傷" },
+        { kanji: "手当", reading: "てあて", chinese: "治療、津貼" },
+        { kanji: "今", reading: "いま", chinese: "現在" },
+        { kanji: "触れる", reading: "ふれる", chinese: "接觸、觸及" },
+        { kanji: "祖先", reading: "そせん", chinese: "祖先" },
+        { kanji: "子孫", reading: "しそん", chinese: "子孫" },
+        { kanji: "孫", reading: "まご", chinese: "孫子" },
+        { kanji: "世代", reading: "せだい", chinese: "世代" },
+        { kanji: "一家", reading: "いっか", chinese: "一家、一戶" },
+        { kanji: "親孝行", reading: "おやこうこう", chinese: "孝順" },
+        { kanji: "懐かしい", reading: "なつかしい", chinese: "懷念的、令人想念的" },
+        { kanji: "姉妹", reading: "しまい", chinese: "姐妹" },
+        { kanji: "末っ子", reading: "すえっこ", chinese: "老么、最小的孩子" },
+        { kanji: "一人っ子", reading: "ひとりっこ", chinese: "獨生子" },
+        { kanji: "双子", reading: "ふたご", chinese: "雙胞胎" },
+        { kanji: "仲良し", reading: "なかよし", chinese: "好朋友、感情好" },
+        { kanji: "お嬢ちゃん", reading: "おじょうちゃん", chinese: "小女兒、小姐" },
+        { kanji: "お坊ちゃん", reading: "おぼうちゃん", chinese: "小兒子、少爺" },
+        { kanji: "夫妻", reading: "ふさい", chinese: "夫妻" },
+        { kanji: "職場", reading: "しょくば", chinese: "職場" },
+        { kanji: "同い年", reading: "おないとし", chinese: "同年齡" },
+        { kanji: "気遣い", reading: "きつかい", chinese: "掛慮、操心" },
+        { kanji: "握手", reading: "あくしゅ", chinese: "握手" },
+        { kanji: "お辞儀をする", reading: "おじぎをする", chinese: "鞠躬" },
+        { kanji: "長年", reading: "ながねん", chinese: "長年" },
+        { kanji: "ちっとも", reading: "ちっとも", chinese: "一點也不" },
+        { kanji: "まるで", reading: "まるで", chinese: "簡直、好像" },
+        { kanji: "特徴", reading: "とくちょう", chinese: "特徵" },
+        { kanji: "対になる", reading: "ついになる", chinese: "成為一對" },
+        { kanji: "積極的", reading: "せっきょくてき", chinese: "積極的" },
+        { kanji: "消極的", reading: "しょうきょくてき", chinese: "消極的" },
+        { kanji: "大人しい", reading: "おとなしい", chinese: "溫順的、安靜的" },
+        { kanji: "やかましい", reading: "やかましい", chinese: "吵鬧的、囉嗦的" },
+        { kanji: "慎重な", reading: "しんちょうな", chinese: "慎重的、小心的" },
+        { kanji: "そそっかしい", reading: "そそっかしい", chinese: "冒失的、魯莽的" },
+        { kanji: "不器用な", reading: "ぶきような", chinese: "笨拙的" },
+        { kanji: "要領がいい", reading: "ようりょうがいい", chinese: "精明的、會辦事的" },
+        { kanji: "謙虚な", reading: "けんきょな", chinese: "謙虛的" },
+        { kanji: "生意気な", reading: "なまいきな", chinese: "傲慢的、自大的" },
+        { kanji: "鋭い", reading: "するどい", chinese: "鋒利的、敏銳的" },
+        { kanji: "鈍い", reading: "にぶい", chinese: "遲鈍的、不靈敏的" },
+        { kanji: "はきはきした", reading: "はきはきした", chinese: "乾脆俐落的、爽快的" },
+        { kanji: "純粋な", reading: "じゅんすいな", chinese: "純粹的、單純的" },
+        { kanji: "穏やかな", reading: "おだやかな", chinese: "穩定的、溫和的" },
+        { kanji: "長所", reading: "ちょうしょ", chinese: "長處、優點" },
+        { kanji: "短所", reading: "たんしょ", chinese: "短處、缺點" },
+        { kanji: "わがままな", reading: "わがままな", chinese: "任性的" },
+        { kanji: "厚かましい", reading: "あつかましい", chinese: "厚臉皮的、無恥的" },
+        { kanji: "図々しい", reading: "ずうずうしい", chinese: "厚顏無恥的" },
+        { kanji: "けちな", reading: "けちな", chinese: "吝嗇的" },
+        { kanji: "平気", reading: "へいき", chinese: "若無其事、不介意" },
+        { kanji: "裏切る", reading: "うらぎる", chinese: "背叛" },
+        { kanji: "ふざけてる", reading: "ふざけてる", chinese: "開玩笑、鬧著玩" },
+        { kanji: "飽きる", reading: "あきる", chinese: "厭倦、膩煩" },
+        { kanji: "飽きっぽい", reading: "あきっぽい", chinese: "易厭倦的、沒長性的" },
+        { kanji: "慌てる", reading: "あわてる", chinese: "慌張、急忙" },
+        { kanji: "のんきな", reading: "のんきな", chinese: "悠閒的、無憂無慮的" },
+        { kanji: "のんびりした", reading: "のんびりした", chinese: "悠閒的、輕鬆的" },
+        { kanji: "率直", reading: "そっちょく", chinese: "坦率、直率" },
+        { kanji: "どきどきする", reading: "どきどきする", chinese: "忐忑不安、緊張" },
+        { kanji: "イライラする", reading: "イライラする", chinese: "焦躁、煩躁" },
+        { kanji: "気楽に", reading: "きらくに", chinese: "輕鬆地、無拘無束地" },
+        { kanji: "焦る", reading: "あせる", chinese: "著急、焦慮" },
+        { kanji: "期限", reading: "きげん", chinese: "期限" },
+        { kanji: "清潔な", reading: "せいけつな", chinese: "清潔的" },
+        { kanji: "不潔な", reading: "ふけつな", chinese: "不潔的、骯髒的" },
+        { kanji: "見かけ", reading: "みかけ", chinese: "外表、外觀" },
+        { kanji: "地味な", reading: "じみな", chinese: "樸素的、不起眼的" },
+        { kanji: "わざと", reading: "わざと", chinese: "故意地" },
+        { kanji: "一切", reading: "いっさい", chinese: "一切、全部" },
+        { kanji: "めっきり", reading: "めっきり", chinese: "顯著地、非常" },
+        { kanji: "相変わらず", reading: "あいかわらず", chinese: "一如既往、仍然" },
+        { kanji: "ずるい", reading: "ずるい", chinese: "狡猾的、奸詐的" },
+        { kanji: "見方", reading: "みかた", chinese: "看法、同伴" },
+        { kanji: "こっそり", reading: "こっそり", chinese: "偷偷地、悄悄地" },
+        { kanji: "疑う", reading: "うたがう", chinese: "懷疑" },
+        { kanji: "敬う", reading: "うやまう", chinese: "尊敬、敬重" },
+        { kanji: "羨む", reading: "うらやむ", chinese: "羨慕" },
+        { kanji: "悩む", reading: "なやむ", chinese: "煩惱、苦惱" },
+        { kanji: "失望する", reading: "しつぼうする", chinese: "失望" },
+        { kanji: "ガッカリする", reading: "ガッカリする", chinese: "失望、洩氣" },
+        { kanji: "羨ましい", reading: "うらやましい", chinese: "令人羨慕的" },
+        { kanji: "気の毒だ", reading: "きのどくた", chinese: "可憐、不幸" },
+        { kanji: "謝る", reading: "あやまる", chinese: "道歉" },
+        { kanji: "慰める", reading: "なぐさめる", chinese: "安慰" },
+        { kanji: "罵る", reading: "ののしる", chinese: "謾罵、辱罵" },
+        { kanji: "貶す", reading: "けなす", chinese: "貶低、誹謗" },
+        { kanji: "避ける", reading: "さける", chinese: "避開、躲開" },
+        { kanji: "逃げる", reading: "にげる", chinese: "逃跑" },
+        { kanji: "彫刻する", reading: "ちょうこくする", chinese: "彫刻、雕刻" },
+        { kanji: "助言する", reading: "じょげんする", chinese: "勸告、建議" },
+        { kanji: "言い付ける", reading: "いいつける", chinese: "吩咐、告狀" },
+        { kanji: "結びつける", reading: "むすびつける", chinese: "聯繫、結合" },
+        { kanji: "自慢する", reading: "じまんする", chinese: "自誇、驕傲" },
+        { kanji: "隠す", reading: "かくす", chinese: "隱藏" },
+        { kanji: "秘密", reading: "ひみつ", chinese: "秘密" },
+        { kanji: "誤解を解く", reading: "ごかいをとく", chinese: "消除誤會" },
+        { kanji: "仲直りする", reading: "なかなおりする", chinese: "和好、言歸於好" },
+        { kanji: "エチケット", reading: "エチケット", chinese: "禮儀、規矩" },
+        { kanji: "作法", reading: "さほう", chinese: "禮節、規矩" },
+        { kanji: "常識", reading: "じょうしき", chinese: "常識" },
+        { kanji: "服装", reading: "ふくそう", chinese: "服裝" },
+        { kanji: "みっともない", reading: "みっともない", chinese: "難看的、不體面的" },
+        { kanji: "見かける", reading: "みかける", chinese: "看到、偶然遇見" },
+        { kanji: "冷める", reading: "さめる", chinese: "冷卻、覺醒" },
+        { kanji: "失恋する", reading: "しつれんする", chinese: "失戀" },
+        { kanji: "恋する", reading: "こいする", chinese: "戀愛" },
+        { kanji: "道徳", reading: "どうとく", chinese: "道德" },
+        { kanji: "まさに", reading: "まさに", chinese: "正是、簡直" },
+        { kanji: "思い切って", reading: "おもいきって", chinese: "毅然地、下定決心地" },
+        { kanji: "ようやく", reading: "ようやく", chinese: "終於、好不容易" },
+        { kanji: "いつの間にか", reading: "いつのまにか", chinese: "不知不覺中" },
+        { kanji: "食う", reading: "くう", chinese: "吃（較粗俗）" },
+        { kanji: "しゃぶる", reading: "しゃぶる", chinese: "吮吸、舔" },
+        { kanji: "味わう", reading: "あじわう", chinese: "品嚐、體會" },
+        { kanji: "嗅ぐ", reading: "かぐ", chinese: "聞（氣味）" },
+        { kanji: "食欲", reading: "しょくよく", chinese: "食慾" },
+        { kanji: "湯飲み", reading: "ゆのみ", chinese: "茶杯" },
+        { kanji: "お盆", reading: "おぼん", chinese: "托盤" },
+        { kanji: "栄養", reading: "えいよう", chinese: "營養" },
+        { kanji: "消化", reading: "しょうか", chinese: "消化" },
+        { kanji: "胃にもたれる", reading: "いにもたれる", chinese: "胃脹、胃不舒服" },
+        { kanji: "歓迎会", reading: "かんげいかい", chinese: "歡迎會" },
+        { kanji: "ごちそうする", reading: "ごちそうする", chinese: "請客、設宴" },
+        { kanji: "酔う", reading: "よう", chinese: "醉" },
+        { kanji: "二日酔い", reading: "ふつかよい", chinese: "宿醉" },
+        { kanji: "頭痛", reading: "ずつう", chinese: "頭痛" },
+        { kanji: "吐き気", reading: "はきけ", chinese: "噁心、想吐" },
+        { kanji: "吐く", reading: "はく", chinese: "吐（及物）、穿（鞋襪）" },
+        { kanji: "失う", reading: "うしなう", chinese: "失去、遺失" },
+        { kanji: "握る", reading: "にぎる", chinese: "握、捏" },
+        { kanji: "贅沢", reading: "ぜいたく", chinese: "奢侈" },
+        { kanji: "粗末な", reading: "そまつな", chinese: "粗糙的、簡陋的" },
+        { kanji: "天然の", reading: "てんねんの", chinese: "天然的、天生的" },
+        { kanji: "貴重な", reading: "きちょうな", chinese: "貴重的、寶貴的" },
+        { kanji: "原産", reading: "げんさん", chinese: "原產地" },
+        { kanji: "好みの味", reading: "このみのあじ", chinese: "喜歡的口味" },
+        { kanji: "縫う", reading: "ぬう", chinese: "縫紉" },
+        { kanji: "柄", reading: "がら", chinese: "花樣、圖案" },
+        { kanji: "模様", reading: "もよう", chinese: "花紋、圖案" },
+        { kanji: "縞模様", reading: "しまもよう", chinese: "條紋圖案" },
+        { kanji: "雑巾", reading: "ぞうきん", chinese: "抹布" },
+        { kanji: "掃く", reading: "はく", chinese: "掃（地）" },
+        { kanji: "ピカピカ", reading: "ピカピカ", chinese: "閃閃發光、光亮" },
+        { kanji: "裏返す", reading: "うらがえす", chinese: "翻面、裡外翻轉" },
+        { kanji: "畳む", reading: "たたむ", chinese: "摺疊" },
+        { kanji: "炊事", reading: "すいじ", chinese: "家務、炊事" },
+        { kanji: "献立", reading: "こんだて", chinese: "菜單、伙食" },
+        { kanji: "フライパン", reading: "フライパン", chinese: "平底鍋" },
+        { kanji: "熱する", reading: "ねっする", chinese: "加熱" },
+        { kanji: "加熱する", reading: "かねつする", chinese: "加熱" },
+        { kanji: "炊く", reading: "たく", chinese: "煮飯" },
+        { kanji: "解く", reading: "とく", chinese: "溶解（及物）" },
+        { kanji: "溶かす", reading: "とかす", chinese: "溶解（及物）" },
+        { kanji: "溶ける", reading: "とける", chinese: "溶解（不及物）" },
+        { kanji: "倉庫", reading: "そうこ", chinese: "倉庫" },
+        { kanji: "仕舞う", reading: "しまう", chinese: "收進、收拾" },
+        { kanji: "栓をする", reading: "せんをする", chinese: "蓋上蓋子" },
+        { kanji: "黴", reading: "かび", chinese: "黴菌、發霉" },
+        { kanji: "生える", reading: "はえる", chinese: "生長、發霉" },
+        { kanji: "腐る", reading: "くさる", chinese: "腐爛、變質" },
+        { kanji: "赤ん坊", reading: "あかんぼう", chinese: "嬰兒" },
+        { kanji: "着せる", reading: "きせる", chinese: "給穿衣服" },
+        { kanji: "撫でる", reading: "なでる", chinese: "撫摸" },
+        { kanji: "抱く", reading: "だく", chinese: "抱、抱著（人或寵物）" },
+        { kanji: "背負う", reading: "せおう", chinese: "背負" },
+        { kanji: "おんぶする", reading: "おんぶする", chinese: "背（人）" },
+        { kanji: "構う", reading: "かまう", chinese: "管、介意" },
+        { kanji: "暴れる", reading: "あばれる", chinese: "亂鬧、發脾氣" },
+        { kanji: "零す", reading: "こぼす", chinese: "弄灑" },
+        { kanji: "零れる", reading: "こぼれる", chinese: "灑出來" },
+        { kanji: "汚す", reading: "よごす", chinese: "弄髒" },
+        { kanji: "汚れる", reading: "よごれる", chinese: "變髒" },
+        { kanji: "水玉模様", reading: "みずたまもよう", chinese: "水玉花紋、圓點花紋" },
+        { kanji: "かえって", reading: "かえって", chinese: "反而、反倒" },
+        { kanji: "予め", reading: "あらかじめ", chinese: "事先、預先" },
+        { kanji: "ぐっと", reading: "ぐっと", chinese: "一口氣、更加、一下子" },
+        { kanji: "症状", reading: "しょうじょう", chinese: "症狀" },
+        { kanji: "崩す", reading: "くずす", chinese: "弄垮、破壞" },
+        { kanji: "かかる", reading: "かかる", chinese: "罹患（疾病）" },
+        { kanji: "伝染", reading: "でんせん", chinese: "傳染" },
+        { kanji: "染める", reading: "そめる", chinese: "染色" },
+        { kanji: "骨折", reading: "こっせつ", chinese: "骨折" },
+        { kanji: "疲れがたまる", reading: "つかれがたまる", chinese: "積累疲勞" },
+        { kanji: "揉む", reading: "もむ", chinese: "按摩、揉" },
+        { kanji: "白髪", reading: "しらが", chinese: "白頭髮" },
+        { kanji: "抜ける", reading: "ぬける", chinese: "脫落、掉落" },
+        { kanji: "捻る", reading: "ひねる", chinese: "扭轉、擰" },
+        { kanji: "捻じる", reading: "ねじる", chinese: "扭、擰" },
+        { kanji: "包帯", reading: "ほうたい", chinese: "繃帶" },
+        { kanji: "効く", reading: "きく", chinese: "有效、奏效" },
+        { kanji: "震える", reading: "ふるえる", chinese: "顫抖" },
+        { kanji: "苦痛", reading: "くつう", chinese: "苦痛、疼痛" },
+        { kanji: "薬局", reading: "やっきょく", chinese: "藥局、藥店" },
+        { kanji: "患者", reading: "かんじゃ", chinese: "病患、病人" },
+        { kanji: "診る", reading: "みる", chinese: "診斷" },
+        { kanji: "診察", reading: "しんさつ", chinese: "診察" },
+        { kanji: "這う", reading: "はう", chinese: "爬" },
+        { kanji: "凭れる", reading: "もたれる", chinese: "倚靠、胃脹" },
+        { kanji: "余分な", reading: "よぶんな", chinese: "多餘的" },
+        { kanji: "予防", reading: "よぼう", chinese: "預防" },
+        { kanji: "適度", reading: "てきど", chinese: "適度" },
+        { kanji: "徹夜", reading: "てつや", chinese: "熬夜" },
+        { kanji: "不足", reading: "ふそく", chinese: "不足" },
+        { kanji: "睡眠不足", reading: "すいみんぶそく", chinese: "睡眠不足" },
+        { kanji: "くしゃみ", reading: "くしゃみ", chinese: "噴嚏" },
+        { kanji: "しゃっくり", reading: "しゃっくり", chinese: "打嗝" },
+        { kanji: "あくび", reading: "あくび", chinese: "呵欠" },
+        { kanji: "寿命", reading: "じゅみょう", chinese: "壽命" },
+        { kanji: "長生き", reading: "ながいき", chinese: "長壽" },
+        { kanji: "肌", reading: "はだ", chinese: "皮膚" },
+        { kanji: "荒れる", reading: "あれる", chinese: "粗糙、荒蕪" },
+        { kanji: "カミソリ", reading: "カミソリ", chinese: "刮鬍刀" },
+        { kanji: "髭", reading: "ひげ", chinese: "鬍子" },
+        { kanji: "剃る", reading: "そる", chinese: "刮、剃" },
+        { kanji: "櫛", reading: "くし", chinese: "梳子" },
+        { kanji: "梳かす", reading: "とかす", chinese: "梳（頭髮）" },
+        { kanji: "立ち上がる", reading: "たちあがる", chinese: "站起來、起身" },
+        { kanji: "飛び上がる", reading: "とびあがる", chinese: "跳起來" },
+        { kanji: "一応", reading: "いちおう", chinese: "暫且、姑且" },
+        { kanji: "たちまち", reading: "たちまち", chinese: "立刻、轉眼間" },
+        { kanji: "今に", reading: "いまに", chinese: "不久、遲早" },
+        { kanji: "活躍する", reading: "かつやくする", chinese: "活躍、大顯身手" },
+        { kanji: "従う", reading: "したがう", chinese: "遵從、跟隨" },
+        { kanji: "ベテラン", reading: "ベテラン", chinese: "老手、經驗豐富的人" },
+        { kanji: "選手", reading: "せんしゅ", chinese: "選手" },
+        { kanji: "責める", reading: "せめる", chinese: "責備、進攻" },
+        { kanji: "勝負", reading: "しょうぶ", chinese: "勝負、比賽" },
+        { kanji: "勝敗", reading: "しょうはい", chinese: "勝敗" },
+        { kanji: "破る", reading: "やぶる", chinese: "打破、輸" },
+        { kanji: "引き分け", reading: "ひきわけ", chinese: "平局、平手" },
+        { kanji: "読書", reading: "どくしょ", chinese: "讀書" },
+        { kanji: "著者", reading: "ちょしゃ", chinese: "著者、作者" },
+        { kanji: "書籍", reading: "しょせき", chinese: "書籍" },
+        { kanji: "目次", reading: "もくじ", chinese: "目錄" },
+        { kanji: "索引", reading: "さくいん", chinese: "索引" },
+        { kanji: "評論", reading: "ひょうろん", chinese: "評論" },
+        { kanji: "執筆", reading: "しっぴつ", chinese: "寫作、執筆" },
+        { kanji: "古典", reading: "こてん", chinese: "古典" },
+        { kanji: "訳す", reading: "やくす", chinese: "翻譯" },
+        { kanji: "小説", reading: "しょうせつ", chinese: "小説" },
+        { kanji: "傑作", reading: "けっさく", chinese: "傑作" },
+        { kanji: "名場面", reading: "めいばめん", chinese: "名場面" },
+        { kanji: "随筆", reading: "ずいひつ", chinese: "随筆、散文" },
+        { kanji: "見つかる", reading: "みつかる", chinese: "被找到、發現" },
+        { kanji: "あらすじ", reading: "あらすじ", chinese: "概要、大綱" },
+        { kanji: "演劇", reading: "えんげき", chinese: "戲劇" },
+        { kanji: "劇場", reading: "げきじょう", chinese: "劇場" },
+        { kanji: "芝居", reading: "しばい", chinese: "戲劇、表演" },
+        { kanji: "演技", reading: "えんぎ", chinese: "演技" },
+        { kanji: "主役", reading: "しゅやく", chinese: "主角" },
+        { kanji: "脇役", reading: "わきやく", chinese: "配角" },
+        { kanji: "舞台", reading: "ぶたい", chinese: "舞台" },
+        { kanji: "幕", reading: "まく", chinese: "幕" },
+        { kanji: "セリフ", reading: "セリフ", chinese: "台詞" },
+        { kanji: "演奏", reading: "えんそう", chinese: "演奏" },
+        { kanji: "裁縫", reading: "さいほう", chinese: "裁縫" },
+        { kanji: "工芸", reading: "こうげい", chinese: "工藝" },
+        { kanji: "綿", reading: "わた", chinese: "棉花" },
+        { kanji: "詰める", reading: "つめる", chinese: "塞滿、裝入" },
+        { kanji: "削る", reading: "けずる", chinese: "削" },
+        { kanji: "彫る", reading: "ほる", chinese: "刻" },
+        { kanji: "ひょっとすると", reading: "ひょっとすると", chinese: "或許、說不定" },
+        { kanji: "もしかして", reading: "もしかして", chinese: "難道、莫非" },
+        { kanji: "僅か", reading: "わずか", chinese: "少量、一點點" },
+        { kanji: "実に", reading: "じつに", chinese: "的確、實在是" },
+        { kanji: "実は", reading: "じつは", chinese: "其實、老實說" }
     ];
 
     // ----------------------------------------------------------------------
-    // 2. 資料正規化與 Kanji/Reading 拆分 (為了混合出題)
+    // 2. 資料分類與全集
     // ----------------------------------------------------------------------
-    const NORMALIZED_WORD_LIST = [];
-    const KANJI_READING_PAIRS = []; // 專門用於漢字選拼音題 (Type 2) 的單字池
-    
-    // 輔助函式：將多重項目拆分，並配對 Kanji (如果適用)
-    function normalizeAndEnrich(item) {
-        // 使用正規表達式嘗試匹配括號內的漢字 (例如: しわす(師走))
-        const regex = /([ぁ-んァ-ン一-龠]+)（([ぁ-んァ-ン一-龠]+)）/;
-        
-        // 嘗試處理多個/符號分隔的項目 (例如: 内科／外科)
-        const parts = item.japanese.split(/[\s\/、・]/).filter(p => p !== '');
-        const chineseParts = item.chinese.split(/[\s\/、・]/).filter(p => p !== '');
-
-        // 處理單一項目
-        if (parts.length === 1 && chineseParts.length === 1) {
-            let kanjiText = item.japanese;
-            let readingText = item.japanese;
-            
-            // 嘗試從原始字串中解析出漢字和讀音
-            let match = item.japanese.match(regex);
-            if (match) {
-                kanjiText = match[2].trim(); // 括號內的通常是漢字
-                readingText = match[1].trim(); // 括號外的通常是讀音
-            } else {
-                // 判斷是否包含漢字
-                const hasKanji = /[\u4e00-\u9faf]/.test(item.japanese);
-                if (hasKanji) {
-                    // 對於單純的漢字詞 (例如: 血液)，Kanji=血液, Reading 需手動轉換
-                    // 為了簡化，這邊只對有 Kanji 的詞，將其作為 Kanji 問題的候選，Kanji/Reading 關係之後在 loadQuestion 時建立
-                    // 這裡我將手動加入一些 Kanij/Reading 對應，否則無法生成正確的 Type 2 題目
-                } else {
-                    // 純假名/片假名詞
-                    // Type 1 Qs: Question = readingText, Answer = chineseText
-                }
-            }
-            
-            // 手動設定一些常見的 Kanji/Reading 對應，覆蓋不準確的解析
-            const manualMapping = {
-                "けいと": { kanji: "毛糸", reading: "けいと" },
-                "どける": { kanji: "退ける", reading: "どける" },
-                "ほこり": { kanji: "埃", reading: "ほこり" },
-                "ほうき": { kanji: "箒", reading: "ほうき" },
-                "ほす": { kanji: "干す", reading: "ほす" },
-                "かわかす": { kanji: "乾かす", reading: "かわかす" },
-                "ゆでる": { kanji: "茹でる", reading: "ゆでる" },
-                "いる": { kanji: "炒る", reading: "いる" },
-                "いためる": { kanji: "炒める", reading: "いためる" },
-                "をにる": { kanji: "煮る", reading: "にる" },
-                "がにえる": { kanji: "煮える", reading: "にえる" },
-                "かじる": { kanji: "齧る", reading: "かじる" },
-                "おごる": { kanji: "奢る", reading: "おごる" },
-                "つまむ": { kanji: "摘む", reading: "つまむ" },
-                "す": { kanji: "酢", reading: "す" },
-                "まずい": { kanji: "不味い", reading: "まずい" },
-                "けつえき": { kanji: "血液", reading: "けつえき" },
-                "おせん": { kanji: "汚染", reading: "おせん" },
-                "みずうみ": { kanji: "湖", reading: "みずうみ" },
-                "せきせつ": { kanji: "積雪", reading: "せきせつ" },
-                "たき": { kanji: "滝", reading: "たき" },
-                "おうぼ": { kanji: "応募", reading: "おうぼ" },
-                "さくや": { kanji: "昨夜", reading: "さくや" },
-                "こげる": { kanji: "焦げる", reading: "こげる" },
-                "そせん": { kanji: "祖先", reading: "そせん" },
-                "しそん": { kanji: "子孫", reading: "しそん" },
-                "まご": { kanji: "孫", reading: "まご" },
-                "ふさい": { kanji: "夫妻", reading: "ふさい" },
-                "しょくば": { kanji: "職場", reading: "しょくば" },
-                "ながねん": { kanji: "長年", reading: "ながねん" },
-                "とくちょう": { kanji: "特徴", reading: "とくちょう" },
-                "うらぎる": { kanji: "裏切る", reading: "うらぎる" },
-                "あきる": { kanji: "飽きる", reading: "あきる" },
-                "あわてる": { kanji: "慌てる", reading: "あわてる" },
-                "あせる": { kanji: "焦る", reading: "あせる" },
-                "きげん": { kanji: "期限", reading: "きげん" },
-                "ぬう": { kanji: "縫う", reading: "ぬう" },
-                "はく": { kanji: "掃く", reading: "はく" },
-                "そうこ": { kanji: "倉庫", reading: "そうこ" },
-                "しまう": { kanji: "仕舞う", reading: "しまう" },
-                "かび": { kanji: "黴", reading: "かび" },
-                "はえる": { kanji: "生える", reading: "はえる" },
-                "くさる": { kanji: "腐る", reading: "くさる" },
-                "なでる": { kanji: "撫でる", reading: "なでる" },
-                "せおう": { kanji: "背負う", reading: "せおう" },
-                "あばれる": { kanji: "暴れる", reading: "あばれる" },
-                "そめる": { kanji: "染める", reading: "そめる" },
-                "もむ": { kanji: "揉む", reading: "もむ" },
-                "ぬける": { kanji: "抜ける", reading: "ぬける" },
-                "はう": { kanji: "這う", reading: "はう" },
-                "もたれる": { kanji: "凭れる", reading: "もたれる" },
-                "てつや": { kanji: "徹夜", reading: "てつや" },
-                "はだ": { kanji: "肌", reading: "はだ" },
-                "あれる": { kanji: "荒れる", reading: "あれる" },
-                "そる": { kanji: "剃る", reading: "そる" },
-                "つとめる": { kanji: "勤める", reading: "つとめる" },
-                "どくしょ": { kanji: "読書", reading: "どくしょ" },
-                "こてん": { kanji: "古典", reading: "こてん" },
-                "やくす": { kanji: "訳す", reading: "やくす" },
-                "ぶたい": { kanji: "舞台", reading: "ぶたい" },
-                "まく": { kanji: "幕", reading: "まく" },
-                "ぬける": { kanji: "抜ける", reading: "ぬける" },
-                "わずか": { kanji: "僅か", reading: "わずか" },
-                "ごかいをとく": { kanji: "誤解を解く", reading: "ごかいをとく" },
-                "なかなおりする": { kanji: "仲直りする", reading: "なかなおりする" },
-                "いっか": { kanji: "一家", reading: "いっか" },
-                "おないとし": { kanji: "同い年", reading: "おないとし" },
-                "きつかい": { kanji: "気遣い", reading: "きつかい" },
-                "あくしゅ": { kanji: "握手", reading: "あくしゅ" },
-                "おじぎをする": { kanji: "お辞儀をする", reading: "おじぎをする" },
-                "あこがれる": { kanji: "憧れる", reading: "あこがれる" },
-                "あやまる": { kanji: "謝る", reading: "あやまる" },
-                "なぐさめる": { kanji: "慰める", reading: "なぐさめる" },
-                "ぶきような": { kanji: "不器用な", reading: "ぶきような" },
-                "ぜいたく": { kanji: "贅沢", reading: "ぜいたく" },
-                "そまつな": { kanji: "粗末な", reading: "そまつな" },
-                "みかけ": { kanji: "見かけ", reading: "みかけ" },
-                "おぼん": { kanji: "お盆", reading: "おぼん" },
-                "ぜんいん": { kanji: "全員", reading: "ぜんいん" },
-                "ゆのみ": { kanji: "湯飲み", reading: "ゆのみ" },
-                "しょうか": { kanji: "消化", reading: "しょうか" },
-                "ずつう": { kanji: "頭痛", reading: "ずつう" },
-                "はきけ": { kanji: "吐き気", reading: "はきけ" },
-                "はく": { kanji: "吐く", reading: "はく" },
-                "おんぶする": { kanji: "おんぶする", reading: "おんぶする" },
-                "だく": { kanji: "抱く", reading: "だく" },
-            };
-            
-            // 檢查是否在手動對應中
-            const manual = manualMapping[item.japanese.replace(/（[^）]+）/g, '').trim()];
-            if (manual) {
-                kanjiText = manual.kanji;
-                readingText = manual.reading;
-            } else if (!match) {
-                // 處理單獨漢字詞 (例如: 血液、師走)
-                const inferredKanji = item.japanese.replace(/（[^）]+）/g, '').trim();
-                const inferredReading = item.japanese.match(/（([^）]+)）/)?.[1] || item.japanese;
-                
-                if (inferredKanji === "けつえき") { kanjiText = "血液"; readingText = "けつえき"; }
-                else if (inferredKanji === "おせん") { kanjiText = "汚染"; readingText = "おせん"; }
-                else if (inferredKanji === "ようちえん") { kanjiText = "幼稚園"; readingText = "ようちえん"; }
-                else if (inferredKanji === "てつがく") { kanjiText = "哲学"; readingText = "てつがく"; }
-                else if (inferredKanji === "きょうじゅ") { kanjiText = "教授"; readingText = "きょうじゅ"; }
-                else if (inferredKanji === "ふくそう") { kanjiText = "服装"; readingText = "ふくそう"; }
-                else if (inferredKanji === "しょくよく") { kanjiText = "食欲"; readingText = "しょくよく"; }
-                else if (inferredKanji === "かんげいかい") { kanjiText = "歓迎会"; readingText = "かんげいかい"; }
-                else if (inferredKanji === "じゅみょう") { kanjiText = "寿命"; readingText = "じゅみょう"; }
-                else if (inferredKanji === "せんしゅ") { kanjiText = "選手"; readingText = "せんしゅ"; }
-                else if (inferredKanji === "しっぴつ") { kanjiText = "執筆"; readingText = "しっぴつ"; }
-                else if (inferredKanji === "えんぎ") { kanjiText = "演技"; readingText = "えんぎ"; }
-                else if (inferredKanji === "さいほう") { kanjiText = "裁縫"; reading: "さいほう"; }
-                else if (inferredKanji === "こうげい") { kanjiText = "工芸"; reading: "こうげい"; }
-                else if (inferredKanji === "せんこうする") { kanjiText = "専攻する"; reading: "せんこうする"; }
-                else if (inferredKanji === "ひょうろん") { kanjiText = "評論"; reading: "ひょうろん"; }
-                else if (inferredKanji === "えいよう") { kanjiText = "栄養"; reading: "えいよう"; }
-                else if (inferredKanji === "がいか") { kanjiText = "外科"; reading: "げか"; }
-                else if (inferredKanji === "ないか") { kanji: "内科", reading: "ないか"; }
-                else if (inferredKanji === "しんさつ") { kanji: "診察", reading: "しんさつ"; }
-                else if (inferredKanji === "かんじゃ") { kanji: "患者", reading: "かんじゃ"; }
-                else if (inferredKanji === "やっきょく") { kanji: "薬局", reading: "やっきょく"; }
-                else if (inferredKanji === "そんがいをだす") { kanji: "損害を出す", reading: "そんがいをだす"; }
-                else if (inferredKanji === "組織する") { kanji: "組織する", reading: "そしきする"; }
-            }
-
-            
-            NORMALIZED_WORD_LIST.push({
-                kanji: kanjiText,
-                reading: readingText,
-                chinese: item.chinese,
-                isKanjiQuestion: kanjiText !== readingText.replace(/（[^）]+）/g, '').trim() // 簡單檢查是否有 Kanji
-            });
-        } 
-        
-        // 處理多個項目並拆分 (例如: 內科／外科)
-        else if (parts.length > 1 && parts.length === chineseParts.length) {
-            for (let i = 0; i < parts.length; i++) {
-                let kanjiText = parts[i];
-                let readingText = parts[i];
-                let chineseText = chineseParts[i];
-                
-                // 再次進行手動對應和清理 (以內科/外科為例)
-                if (kanjiText.includes('／')) {
-                    const [k1, k2] = kanjiText.split('／').map(s => s.trim());
-                    const [r1, r2] = chineseText.split('／').map(s => s.trim()); 
-                    
-                    if (k1 === "ないか" && k2 === "げか") {
-                        NORMALIZED_WORD_LIST.push({ kanji: "内科", reading: "ないか", chinese: r1, isKanjiQuestion: true });
-                        NORMALIZED_WORD_LIST.push({ kanji: "外科", reading: "げか", chinese: r2, isKanjiQuestion: true });
-                    }
-                    if (k1 === "すな" && k2 === "どろ") {
-                        NORMALIZED_WORD_LIST.push({ kanji: "砂", reading: "すな", chinese: chineseParts[0].split(' / ')[0].trim(), isKanjiQuestion: true });
-                        NORMALIZED_WORD_LIST.push({ kanji: "泥", reading: "どろ", chinese: chineseParts[0].split(' / ')[1].trim(), isKanjiQuestion: true });
-                    }
-                    if (k1 === "なだらかな" && k2 === "けわしい") {
-                        NORMALIZED_WORD_LIST.push({ kanji: "なだらかな", reading: "なだらかな", chinese: chineseParts[0].split(' / ')[0].trim(), isKanjiQuestion: false });
-                        NORMALIZED_WORD_LIST.push({ kanji: "険しい", reading: "けわしい", chinese: chineseParts[0].split(' / ')[1].trim(), isKanjiQuestion: true });
-                    }
-                    if (k1 === "つよきな" && k2 === "よわきな") {
-                        NORMALIZED_WORD_LIST.push({ kanji: "強気な", reading: "つよきな", chinese: chineseParts[0].split(' / ')[0].trim(), isKanjiQuestion: true });
-                        NORMALIZED_WORD_LIST.push({ kanji: "弱気な", reading: "よわきな", chinese: chineseParts[0].split(' / ')[1].trim(), isKanjiQuestion: true });
-                    }
-                    if (k1 === "けずる" && k2 === "ほる") {
-                        NORMALIZED_WORD_LIST.push({ kanji: "削る", reading: "けずる", chinese: chineseParts[0].split('、')[0].trim(), isKanjiQuestion: true });
-                        NORMALIZED_WORD_LIST.push({ kanji: "彫る", reading: "ほる", chinese: chineseParts[0].split('、')[1].trim(), isKanjiQuestion: true });
-                    }
-                    // 為了避免過度複雜，我將在 JS 中手動處理這些多重對應，以確保資料正確性
-                } else if (kanjiText.includes('（')) {
-                     // 處理括號 (例如: 当分（とうぶん）)
-                    kanjiText = parts[i].split('（')[0].trim();
-                    readingText = parts[i].match(/（([^）]+)）/)?.[1] || parts[i];
-
-                    NORMALIZED_WORD_LIST.push({
-                        kanji: kanjiText,
-                        reading: readingText,
-                        chinese: chineseText,
-                        isKanjiQuestion: kanjiText !== readingText
-                    });
-                } else {
-                    // 將純假名詞視為非漢字題的候選
-                    NORMALIZED_WORD_LIST.push({
-                        kanji: kanjiText,
-                        reading: readingText,
-                        chinese: chineseText,
-                        isKanjiQuestion: /[\u4e00-\u9faf]/.test(kanjiText) 
-                    });
-                }
-            }
-        } 
-        // 處理其餘單一或無法準確拆分的項目，使用最簡單的對應
-        else {
-            let kanji = item.japanese.split(/[\s\/、・]/)[0].replace(/（[^）]+）/g, '').trim();
-            let reading = item.japanese.match(/（([^）]+)）/)?.[1] || kanji;
-            
-            // 由於前幾次已經處理了大量詞彙，剩下的使用最原始的映射，並嘗試找尋漢字
-            let finalKanji = kanji;
-            let finalReading = reading;
-            
-            // 最後一次嘗試從已知對應中找
-            const manual = manualMapping[kanji];
-            if (manual) {
-                finalKanji = manual.kanji;
-                finalReading = manual.reading;
-            } else if (!/[\u4e00-\u9faf]/.test(kanji)) {
-                 // 假名詞彙，例如: あかんぼう -> 赤ん坊
-                if (kanji === "あかんぼう") { finalKanji = "赤ん坊"; finalReading = "あかんぼう"; }
-                else if (kanji === "しらが") { finalKanji = "白髪"; finalReading = "しらが"; }
-                else if (kanji === "あらすじ") { finalKanji = "あらすじ"; finalReading = "あらすじ"; }
-            }
-            
-            NORMALIZED_WORD_LIST.push({
-                kanji: finalKanji,
-                reading: finalReading,
-                chinese: item.chinese,
-                isKanjiQuestion: finalKanji !== finalReading
-            });
-        }
-    }
-    
-    // 執行正規化
-    RAW_WORDS.forEach(normalizeAndEnrich);
-    
-    // 從正規化清單中篩選出適合 Kanji 題型的單字池
-    const KANJI_WORDS_POOL = NORMALIZED_WORD_LIST.filter(item => {
-        // 確保 Kanji 和 Reading 不同，且 Kanji 包含實際漢字（非純假名）
+    // 篩選出適合 Kanji 題型的單字池 (Kanji 和 Reading 不同)
+    const KANJI_WORDS_POOL = RAW_WORDS_CLEANED.filter(item => {
         const hasKanjiChar = /[\u4e00-\u9faf]/.test(item.kanji);
-        return hasKanjiChar && item.kanji !== item.reading;
+        return hasKanjiChar && item.kanji !== item.reading && item.kanji.length > item.reading.length; // 確保不是純假名
     }).map(item => ({
         ...item,
         type: 'kanji_to_reading'
     }));
 
-    // 篩選出適合 Reading 題型的單字池 (所有詞彙皆可)
-    const READING_WORDS_POOL = NORMALIZED_WORD_LIST.map(item => ({
+    // 所有詞彙皆可作為 Reading 題的候選 (選中文意思)
+    const READING_WORDS_POOL = RAW_WORDS_CLEANED.map(item => ({
         ...item,
         type: 'reading_to_chinese'
     }));
+    
+    // 全部的中文意思和假名，用於生成干擾選項
+    const ALL_CHINESE_MEANINGS = RAW_WORDS_CLEANED.map(word => word.chinese);
+    const ALL_READINGS = RAW_WORDS_CLEANED.map(word => word.reading);
 
 
     // ----------------------------------------------------------------------
-
+    // 3. 測驗狀態與 DOM 元素
+    // ----------------------------------------------------------------------
     const MAX_QUESTIONS = 20; 
-    const ALL_CHINESE_MEANINGS = NORMALIZED_WORD_LIST.map(word => word.chinese);
-    const ALL_READINGS = NORMALIZED_WORD_LIST.map(word => word.reading);
-    let availableWords = [...NORMALIZED_WORD_LIST]; // 用於記錄答錯後需練習的詞彙
     let currentQuiz = []; 
     let currentQuestionIndex = 0;
     let score = 0;
@@ -882,12 +631,10 @@
     const restartButton = document.getElementById('restart-button');
     const remainingCounter = document.getElementById('remaining-counter'); 
     const questionPromptText = document.getElementById('question-prompt-text'); 
-    
-    const totalQuizLengthDisplay = document.getElementById('total-quiz-length');
 
 
     // ----------------------------------------------------------------------
-    // 核心工具函數
+    // 4. 核心工具函數
     // ----------------------------------------------------------------------
 
     function shuffleArray(array) {
@@ -911,48 +658,47 @@
         return tempArray.slice(0, n);
     }
     
-    // 新增：生成漢字題的干擾選項
+    // 生成漢字題的干擾選項
     function generateReadingDistractors(correctReading) {
-        let distractors = [];
+        let distractors = new Set();
         let base = correctReading.replace(/[っ]/g, '').replace(/[ー]/g, '');
 
-        // 1. 促音或長音干擾
-        if (correctReading.includes('っ')) {
-            distractors.push(correctReading.replace('っ', ''));
-        } else if (correctReading.length > 2 && correctReading.includes(correctReading[correctReading.length - 2])) {
-            distractors.push(correctReading.slice(0, -1) + 'ー');
-        } else {
-            // 隨機添加長音
-            if (base.length > 2) {
-                 const longVowels = ['あ', 'い', 'う', 'え', 'お'];
-                 const lastVowel = base.slice(-1);
-                 if (longVowels.includes(lastVowel)) {
-                     distractors.push(base + 'ー');
-                 }
+        // 1. 相似假名或音變干擾
+        if (correctReading.length > 2) {
+            // 嘗試改變促音
+            if (correctReading.includes('っ')) {
+                distractors.add(correctReading.replace('っ', ''));
             }
+            // 嘗試改變長音
+            if (correctReading.includes('ー')) {
+                 distractors.add(correctReading.replace('ー', ''));
+            }
+            // 嘗試改變相似的假名 (例如: ち->し)
+            if (base.includes('ち')) distractors.add(base.replace('ち', 'し'));
+            if (base.includes('ん')) distractors.add(base.replace('ん', 'う'));
         }
         
-        // 2. 相似假名干擾
+        // 2. 從所有讀音中隨機選取
         const allReadings = ALL_READINGS.filter(r => r !== correctReading);
+        const uniqueDistractors = Array.from(distractors).filter(d => d !== correctReading);
+
+        const requiredNum = 4 - 1; // 總共需要 4 個選項，正確答案佔 1 個
         
-        // 確保選項不重複
-        const uniqueDistractors = new Set(distractors);
+        // 確保選項不重複且不包含正確答案
+        const finalDistractors = getRandomElements(allReadings, requiredNum, [correctReading, ...uniqueDistractors]);
 
-        // 3. 隨機選取其他詞彙的讀音作為干擾
-        const randomReadings = getRandomElements(allReadings, 4 - uniqueDistractors.size, Array.from(uniqueDistractors));
-        randomReadings.forEach(r => uniqueDistractors.add(r));
-
-        return Array.from(uniqueDistractors).slice(0, 3);
+        return finalDistractors;
     }
 
 
     // ----------------------------------------------------------------------
-    // 測驗邏輯
+    // 5. 測驗邏輯
     // ----------------------------------------------------------------------
 
     function generateQuiz() {
         const KANJI_COUNT = KANJI_WORDS_POOL.length;
-        const KANJI_Q_NUM = Math.min(10, KANJI_COUNT);
+        // 固定抽取 10 題漢字題 (或所有，取較小值)
+        const KANJI_Q_NUM = Math.min(10, KANJI_COUNT); 
         const READING_Q_NUM = MAX_QUESTIONS - KANJI_Q_NUM;
         const totalQuizLength = KANJI_Q_NUM + READING_Q_NUM;
         
@@ -968,7 +714,6 @@
         
         // 4. 合併並打亂
         currentQuiz = shuffleArray([...kanjiQuestions, ...readingQuestions]); 
-        availableWords = [...NORMALIZED_WORD_LIST]; // 重置答錯單字庫
         
         currentQuestionIndex = 0;
         score = 0;
@@ -995,10 +740,10 @@
 
         const currentNumber = currentQuestionIndex + 1;
         
-        // 1. 更新頂部進度顯示器 (已作答 / 總題數)
+        // 1. 更新頂部進度顯示器
         remainingCounter.textContent = `已作答 ${currentQuestionIndex} / 共 ${totalQuizLength} 題`;
         
-        // 2. 更新問題框內的題號 (第 N 題 / 共 M 題)
+        // 2. 更新問題框內的題號
         questionCounter.textContent = `第 ${currentNumber} 題 / 共 ${totalQuizLength} 題`;
         
         feedback.textContent = '';
@@ -1033,14 +778,16 @@
             const button = document.createElement('button');
             button.classList.add('option-button');
             button.textContent = option;
-            button.onclick = () => checkAnswer(button, option, correctAnswer, currentItem.kanji);
+            // 使用 closure 傳遞正確答案和詞彙
+            button.onclick = () => checkAnswer(button, option, correctAnswer); 
             optionsContainer.appendChild(button);
         });
         
         document.querySelectorAll('.option-button').forEach(btn => btn.disabled = false);
     }
 
-    function checkAnswer(selectedButton, selectedAnswer, correctAnswer, wordKey) {
+    function checkAnswer(selectedButton, selectedAnswer, correctAnswer) {
+        // 鎖住所有按鈕
         document.querySelectorAll('.option-button').forEach(btn => btn.disabled = true);
         const totalQuizLength = currentQuiz.length;
 
@@ -1048,36 +795,23 @@
             score++;
             selectedButton.classList.add('correct');
             feedback.textContent = '✅ 正確！';
-            
-            // 答對的詞從待練習清單中移除（如果存在）
-            const indexToRemove = availableWords.findIndex(w => w.kanji === wordKey);
-            if (indexToRemove > -1) {
-                 availableWords.splice(indexToRemove, 1);
-            }
         } else {
             selectedButton.classList.add('incorrect');
             feedback.textContent = `❌ 錯誤！正確答案是：${correctAnswer}`;
             
+            // 標示正確答案
             document.querySelectorAll('.option-button').forEach(btn => {
                 if (btn.textContent === correctAnswer) {
                     btn.classList.add('correct');
                 }
             });
-            
-            // 答錯的詞加回待練習清單
-            const wrongWord = NORMALIZED_WORD_LIST.find(w => w.kanji === wordKey);
-            const isAlreadyAvailable = availableWords.some(w => w.kanji === wordKey);
-            if (wrongWord && !isAlreadyAvailable) {
-                availableWords.push(wrongWord);
-            }
         }
 
         // 更新已作答題數
         remainingCounter.textContent = `已作答 ${currentQuestionIndex + 1} / 共 ${totalQuizLength} 題`;
         
+        // 延遲後進入下一題或顯示結果
         setTimeout(() => {
-            document.querySelectorAll('.option-button').forEach(btn => btn.classList.remove('correct', 'incorrect'));
-            
             currentQuestionIndex++;
             loadQuestion();
         }, 1500); 
@@ -1090,12 +824,15 @@
         
         remainingCounter.textContent = `已作答 ${totalQuizLength} / 共 ${totalQuizLength} 題`; 
         
-        finalScore.innerHTML = `您答對了 <span style="font-size: 2em; color: #e74c3c;">${score}</span> 題，總共 ${totalQuizLength} 題。`;
+        finalScore.innerHTML = `您答對了 <span style="font-size: 2em; color: #e74c3c; font-weight: bold;">${score}</span> 題，總共 ${totalQuizLength} 題。`;
     }
 
     restartButton.addEventListener('click', generateQuiz);
 
-    window.onload = generateQuiz;
+    // ----------------------------------------------------------------------
+    // 6. 網頁啟動點 (修正了您原先的問題)
+    // ----------------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', generateQuiz);
 
 </script>
 </body>
