@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>An-Yu's JLPT N2/N3 題庫 (全收錄完整版)</title>
+    <title>JLPT 特訓 (聽音辨義強化版)</title>
     <style>
         :root {
             --primary: #4f46e5;
@@ -51,7 +51,6 @@
             margin-bottom: 25px;
         }
 
-        /* 狀態條 */
         .stats-row {
             display: flex;
             justify-content: space-between;
@@ -77,7 +76,6 @@
             transition: width 0.3s ease;
         }
 
-        /* 題目區域 */
         .quiz-card {
             background: #f1f5f9;
             border: 2px solid #e2e8f0;
@@ -106,13 +104,6 @@
             margin: 10px 0;
         }
 
-        .hint-text {
-            font-size: 1rem;
-            color: #64748b;
-            height: 1.5rem;
-        }
-
-        /* 選項按鈕 */
         .options-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -186,17 +177,17 @@
 <body>
 
 <div class="container">
-    
     <div id="start-screen">
-        <h1>An-Yu 的全方位日檢特訓</h1>
+        <h1>An-Yu 的 JLPT 特訓 (強化版)</h1>
         <div class="subtitle">
-            全詞彙收錄：家事、身體、性格、地理、旅遊、商業、IT、媒體<br>
-            已啟用 JLPT 擬真混淆演算法
+            模式更新：意思題改為「純假名」出題<br>
+            避免看漢字猜義，強化聽音辨義能力
         </div>
         <div style="margin: 30px 0; color: #64748b; font-size: 0.95rem;">
             測驗規則：<br>
-            • 隨機抽選 20 題 (讀音/意思 各半)<br>
-            • 答錯會顯示正確答案，並重新排入隊列直到答對
+            1. 選意思：題目顯示平假名 (例: ほうき) ➡ 選中文<br>
+            2. 選讀音：題目顯示漢字 (例: 箒) ➡ 選讀音<br>
+            • 錯題會自動重來
         </div>
         <button class="btn-primary" onclick="startQuiz()">開始特訓</button>
     </div>
@@ -213,7 +204,6 @@
         <div class="quiz-card">
             <div class="tag" id="q-type-badge"></div>
             <div class="word-text" id="q-word"></div>
-            <div class="hint-text" id="q-hint"></div>
         </div>
 
         <div class="options-grid" id="options-container"></div>
@@ -226,13 +216,9 @@
         <div id="result-stats" style="margin: 30px 0; font-weight: bold; color: #64748b;"></div>
         <button class="btn-primary" onclick="location.reload()">再測驗一輪</button>
     </div>
-
 </div>
 
 <script>
-    // ==========================================
-    // 完整資料庫：第一批 + 第二批
-    // ==========================================
     const rawData = [
         // --- 第一批：家事 (Housework) ---
         {kanji: "毛糸", kana: "けいと", meaning: "毛線"},
@@ -747,20 +733,13 @@
     let wrongCount = 0;
     const TARGET_QUESTIONS = 20;
 
-    // ============================================
-    // 演算法：生成 JLPT 風格干擾項 (長音/濁音/促音/動詞變化)
-    // ============================================
     function generateSmartDistractors(correctKana) {
         let distractors = new Set();
         let attempts = 0;
-
         while (distractors.size < 3 && attempts < 50) {
             attempts++;
             let fake = correctKana;
             const strategy = Math.floor(Math.random() * 6);
-
-            // 策略 A: 濁音/半濁音混淆 (JLPT 經典)
-            // 針對「答案」touan vs douan, 「予防」yobou vs yohou
             if (strategy === 0) {
                 if (fake.includes('と')) fake = fake.replace('と', 'ど');
                 else if (fake.includes('ど')) fake = fake.replace('ど', 'と');
@@ -769,56 +748,36 @@
                 else if (fake.includes('た')) fake = fake.replace('た', 'だ');
                 else if (fake.includes('だ')) fake = fake.replace('だ', 'た');
                 else if (fake.includes('は')) fake = fake.replace('は', 'ぱ');
-            } 
-            // 策略 B: 長音操作 (JLPT 經典)
-            // 針對「小」shou vs sho, 「口」kou vs ko
-            else if (strategy === 1) {
-                if (fake.includes('う')) fake = fake.replace('う', ''); // 移除長音
-                else if (fake.match(/[おこぞとどのもろ]/)) fake += 'う'; // 增加o段長音
-                else if (fake.match(/[えけせてねめれ]/)) fake += 'い'; // 增加e段長音
-            }
-            // 策略 C: 促音操作
-            // 針對「失業」shitsugyou vs shikkou
-            else if (strategy === 2) {
-                if (fake.includes('っ')) fake = fake.replace('っ', 'つ'); // 移除促音
+            } else if (strategy === 1) {
+                if (fake.includes('う')) fake = fake.replace('う', '');
+                else if (fake.match(/[おこぞとどのもろ]/)) fake += 'う';
+                else if (fake.match(/[えけせてねめれ]/)) fake += 'い';
+            } else if (strategy === 2) {
+                if (fake.includes('っ')) fake = fake.replace('っ', 'つ');
                 else if (fake.length > 2 && !fake.includes('っ')) {
                     const pos = Math.floor(Math.random() * (fake.length - 1)) + 1;
                     fake = fake.slice(0, pos) + 'っ' + fake.slice(pos);
                 }
-            }
-            // 策略 D: 自動詞/他動詞干擾
-            // 針對 agaru vs ageru
-            else if (strategy === 3) {
+            } else if (strategy === 3) {
                 if (fake.endsWith('かる')) fake = fake.replace('かる', 'ける');
                 else if (fake.endsWith('ける')) fake = fake.replace('ける', 'かる');
                 else if (fake.endsWith('ある')) fake = fake.replace('ある', 'える');
                 else if (fake.endsWith('える')) fake = fake.replace('える', 'ある');
                 else if (fake.endsWith('ぐ')) fake = fake.replace('ぐ', 'く');
-            }
-            // 策略 E: 拗音混淆
-            else if (strategy === 4) {
+            } else if (strategy === 4) {
                  if (fake.includes('ゃ')) fake = fake.replace('ゃ', '');
                  else if (fake.includes('ゅ')) fake = fake.replace('ゅ', '');
                  else if (fake.includes('ょ')) fake = fake.replace('ょ', '');
-            }
-            // 策略 F: 尾音替換
-            else {
+            } else {
                 const endings = ['い', 'ん', 'つ', 'う', 'く'];
                 fake = fake.slice(0, -1) + endings[Math.floor(Math.random() * endings.length)];
             }
-
-            // 檢查有效性
-            if (fake !== correctKana && fake.length >= 1) {
-                distractors.add(fake);
-            }
+            if (fake !== correctKana && fake.length >= 1) distractors.add(fake);
         }
-
-        // 補足選項
         while (distractors.size < 3) {
             const randomWord = rawData[Math.floor(Math.random() * rawData.length)];
             if (randomWord.kana !== correctKana) distractors.add(randomWord.kana);
         }
-
         return Array.from(distractors);
     }
 
@@ -826,9 +785,7 @@
         let distractors = new Set();
         while (distractors.size < 3) {
             const randomWord = rawData[Math.floor(Math.random() * rawData.length)];
-            if (randomWord.meaning !== correctMeaning) {
-                distractors.add(randomWord.meaning);
-            }
+            if (randomWord.meaning !== correctMeaning) distractors.add(randomWord.meaning);
         }
         return Array.from(distractors);
     }
@@ -841,27 +798,15 @@
         return array;
     }
 
-    // ============================================
-    // 測驗流程
-    // ============================================
     function startQuiz() {
-        // 從總題庫隨機抓 20 題
         const shuffledWords = shuffle([...rawData]).slice(0, TARGET_QUESTIONS);
         
-        // 分配 10 題讀音 + 10 題意思
         const readingQ = shuffledWords.slice(0, 10).map(word => {
-            if (word.noKanjiInQ) {
-                return {
-                    type: 'MEANING',
-                    text: word.kana,
-                    correct: word.meaning,
-                    options: shuffle([word.meaning, ...generateMeaningDistractors(word.meaning)]),
-                    raw: word
-                };
-            }
+            // 如果是標註不顯示漢字的單字，這邊可以選擇略過，或者只出意思題
+            // 但依照您的需求，這邊統一：讀音題顯示漢字
             return {
                 type: 'READING',
-                text: word.kanji,
+                text: word.kanji, // 讀音題：顯示漢字
                 correct: word.kana,
                 options: shuffle([word.kana, ...generateSmartDistractors(word.kana)]),
                 raw: word
@@ -870,7 +815,7 @@
 
         const meaningQ = shuffledWords.slice(10, 20).map(word => ({
             type: 'MEANING',
-            text: word.noKanjiInQ ? word.kana : word.kanji,
+            text: word.kana, // 意思題：顯示假名 (KEY CHANGE)
             correct: word.meaning,
             options: shuffle([word.meaning, ...generateMeaningDistractors(word.meaning)]),
             raw: word
@@ -902,7 +847,6 @@
 
         document.getElementById('q-type-badge').innerText = q.type === 'READING' ? '選出讀音' : '選出意思';
         document.getElementById('q-word').innerText = q.text;
-        document.getElementById('q-hint').innerText = '';
         document.getElementById('feedback-msg').innerText = '';
 
         const container = document.getElementById('options-container');
@@ -934,23 +878,21 @@
             btn.classList.add('wrong');
             wrongCount++;
             
-            // 標示正確答案
             allBtns.forEach(b => {
                 if (b.innerText === q.correct) b.classList.add('correct');
             });
 
             document.getElementById('feedback-msg').style.color = 'var(--error)';
-            const correctInfo = q.type === 'READING' ? q.raw.meaning : q.raw.kana;
-            document.getElementById('feedback-msg').innerText = `錯誤！ (${q.raw.kanji} = ${q.raw.kana})`;
+            const correctInfo = q.type === 'READING' ? q.raw.meaning : `(${q.raw.kanji})`;
+            document.getElementById('feedback-msg').innerText = `錯誤！ ${correctInfo}`;
 
-            // 錯題重新排入
             const retryQ = quizQueue.shift();
             retryQ.options = shuffle(retryQ.options);
             quizQueue.push(retryQ);
 
             setTimeout(() => {
                 renderQuestion();
-            }, 2500);
+            }, 2000);
         }
     }
 
@@ -961,6 +903,5 @@
             `本次錯誤次數：${wrongCount} 次`;
     }
 </script>
-
 </body>
 </html>
